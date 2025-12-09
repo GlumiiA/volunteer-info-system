@@ -26,19 +26,24 @@ DECLARE
     event_age_restriction INTEGER;
     participant_age INTEGER;
 BEGIN
-    -- Получаем дату рождения участника
-    SELECT birth_date INTO participant_birth_date
-    FROM "user"
-    WHERE id = NEW.participant_id;
-    
     -- Получаем возрастное ограничение мероприятия
     SELECT age_restriction INTO event_age_restriction
     FROM mass_event
     WHERE id = NEW.event_id;
     
-    -- Если дата рождения не указана, разрешаем участие
-    IF participant_birth_date IS NULL THEN
+    -- Если возрастное ограничение не указано, разрешаем участие
+    IF event_age_restriction IS NULL THEN
         RETURN NEW;
+    END IF;
+
+    -- Получаем дату рождения участника
+    SELECT birth_date INTO participant_birth_date
+    FROM "user"
+    WHERE id = NEW.participant_id;
+    
+    -- Если дата рождения не указана, запрещаем участие
+    IF participant_birth_date IS NULL THEN
+        RAISE EXCEPTION 'Дата рождения участника не указана'
     END IF;
     
     -- Вычисляем возраст участника
@@ -63,19 +68,24 @@ DECLARE
     participant_age INTEGER;
     event_start TIMESTAMP;
 BEGIN
-    -- Получаем дату рождения участника
-    SELECT birth_date INTO participant_birth_date
-    FROM "user"
-    WHERE id = NEW.user_id;
-    
     -- Получаем возрастное ограничение и дату начала мероприятия
     SELECT age_restriction, date_start INTO event_age_restriction, event_start
     FROM individual_event
     WHERE id = NEW.event_id;
     
-    -- Если дата рождения не указана, разрешаем участие
-    IF participant_birth_date IS NULL THEN
+    -- Если возрастное ограничение не указано, разрешаем участие
+    IF event_age_restriction IS NULL THEN
         RETURN NEW;
+    END IF;
+
+    -- Получаем дату рождения участника
+    SELECT birth_date INTO participant_birth_date
+    FROM "user"
+    WHERE id = NEW.user_id;
+    
+    -- Если дата рождения не указана, запрещаем участие
+    IF participant_birth_date IS NULL THEN
+        RAISE EXCEPTION 'Дата рождения участника не указана'
     END IF;
     
     -- Вычисляем возраст участника на момент мероприятия
@@ -471,8 +481,6 @@ CREATE TRIGGER trg_check_individual_event_date
     BEFORE INSERT ON individual_event
     FOR EACH ROW
     EXECUTE FUNCTION check_event_date_on_insert();
-
--- Удален дублирующий триггер trg_check_mass_event_date (используется новый trg_check_mass_event_date_on_insert)
 
 -- ============================================
 -- ИНФОРМАЦИЯ О СОЗДАННЫХ ТРИГГЕРАХ

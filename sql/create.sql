@@ -27,7 +27,7 @@ CREATE TYPE skill_level AS ENUM ('beginner', 'intermediate', 'advanced', 'expert
 -- ============================================
 
 -- Таблица: OAuth провайдеры
-CREATE TABLE oauth_providers (
+CREATE TABLE oauth_provider (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
     CONSTRAINT chk_provider_name_not_empty CHECK (LENGTH(TRIM(name)) > 0)
@@ -76,7 +76,7 @@ CREATE TABLE user_oauth (
     CONSTRAINT fk_oauth_user FOREIGN KEY (user_id) 
         REFERENCES "user"(id) ON DELETE CASCADE,
     CONSTRAINT fk_oauth_provider FOREIGN KEY (provider_id) 
-        REFERENCES oauth_providers(id) ON DELETE CASCADE,
+        REFERENCES oauth_provider(id) ON DELETE CASCADE,
     CONSTRAINT chk_provider_user_id_not_empty CHECK (LENGTH(TRIM(provider_user_id)) > 0),
     CONSTRAINT chk_access_token_not_empty CHECK (LENGTH(TRIM(access_token)) > 0),
     CONSTRAINT chk_expires_at_future CHECK (expires_at IS NULL OR expires_at > created_at)
@@ -230,7 +230,7 @@ CREATE INDEX idx_oauth_provider_user ON user_oauth(provider_id, provider_user_id
 -- КОММЕНТАРИИ К ТАБЛИЦАМ
 -- ============================================
 
-COMMENT ON TABLE oauth_providers IS 'Список OAuth провайдеров для авторизации';
+COMMENT ON TABLE oauth_provider IS 'Список OAuth провайдеров для авторизации';
 COMMENT ON TABLE organisation IS 'Организации, проводящие волонтерские мероприятия';
 COMMENT ON TABLE "user" IS 'Пользователи системы (волонтеры и представители организаций)';
 COMMENT ON TABLE user_oauth IS 'OAuth данные пользователей';
