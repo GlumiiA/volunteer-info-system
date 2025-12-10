@@ -43,15 +43,26 @@ CREATE TABLE organisation (
     CONSTRAINT chk_org_address_not_empty CHECK (address IS NULL OR LENGTH(TRIM(address)) > 0)
 );
 
+CREATE TABLE user_credential (
+    user_id INTEGER PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_credential_user FOREIGN KEY (user_id)
+        REFERENCES "user"(id) ON DELETE CASCADE
+);
+
 -- Таблица: Пользователи
 CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
     organisation_id INTEGER,
     role user_role NOT NULL DEFAULT 'user',
     name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
     birth_date DATE,
     location VARCHAR(255),
+    avatar_url VARCHAR(500),       -- Может быть из OAuth или загружен вручную
     volunteer_hours REAL NOT NULL DEFAULT 0.0,
     rating REAL DEFAULT 0.0,
     CONSTRAINT fk_user_organisation FOREIGN KEY (organisation_id) 
@@ -205,26 +216,17 @@ CREATE TABLE leaderboard (
 -- ============================================
 
 -- Индексы для повышения производительности
-CREATE INDEX idx_user_organisation ON "user"(organisation_id);
-CREATE INDEX idx_user_role ON "user"(role);
-CREATE INDEX idx_user_volunteer_hours ON "user"(volunteer_hours DESC);
-CREATE INDEX idx_user_rating ON "user"(rating DESC);
-
-CREATE INDEX idx_individual_event_organiser ON individual_event(organiser_id);
-CREATE INDEX idx_individual_event_date_start ON individual_event(date_start);
-CREATE INDEX idx_individual_event_date_end ON individual_event(date_end);
+CREATE INDEX idx_individual_event_organiser ON individual_event(organiser_id); 
+CREATE INDEX idx_individual_event_date_start ON individual_event(date_start);  
 
 CREATE INDEX idx_mass_event_organisation ON mass_event(organisation_id);
 CREATE INDEX idx_mass_event_date_start ON mass_event(date_start);
-CREATE INDEX idx_mass_event_date_end ON mass_event(date_end);
-
 CREATE INDEX idx_participation_status ON participation_query(status);
 CREATE INDEX idx_participation_participant ON participation_query(participant_id);
-
-CREATE INDEX idx_review_reviewed ON review(reviewed_id);
-CREATE INDEX idx_review_rating ON review(rating);
+CREATE INDEX idx_participation_event ON participation_query(event_id);
 
 CREATE INDEX idx_oauth_provider_user ON user_oauth(provider_id, provider_user_id);
+CREATE INDEX idx_volunteer_book_event ON volunteer_book_entry(user_id);
 
 -- ============================================
 -- КОММЕНТАРИИ К ТАБЛИЦАМ
@@ -247,3 +249,176 @@ COMMENT ON COLUMN "user".volunteer_hours IS 'Общее количество о�
 COMMENT ON COLUMN "user".rating IS 'Средний рейтинг пользователя на основе отзывов';
 COMMENT ON COLUMN mass_event.work_hours IS 'Количество часов работы на мероприятии';
 COMMENT ON COLUMN participation_query.status IS 'Статус запроса: pending, accepted, rejected, withdrawn';
+
+-- ============================================
+-- ФУНКЦИИ
+-- ============================================
+
+CREATE OR REPLACE FUNCTION update_oauth_tokens(
+    p_user_id INTEGER,
+    p_provider_id INTEGER,
+    p_tokens JSONB
+) RETURNS VOID AS $$
+BEGIN
+    UPDATE user_oauth
+    SET 
+        access_token = p_tokens->>'access_token',
+        refresh_token = p_tokens->>'refresh_token',
+        expires_at = to_timestamp(p_tokens->>'expires_at', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+    WHERE 
+        user_id = p_user_id AND 
+        provider_id = p_provider_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
+-- ПРИМЕР ВСТАВКИ ДАННЫХ
+-- ============================================
+
+INSERT INTO oauth_provider (name) VALUES ('Google'), ('Facebook'), ('VK');
+
+INSERT INTO organisation (name, description, address) VALUES 
+('Организация 1', 'Описание организации 1', 'Адрес организации 1'),
+('Организация 2', 'Описание организации 2', 'Адрес организации 2');
+
+INSERT INTO "user" (organisation_id, role, name, email, birth_date, location) VALUES 
+(1, 'user', 'Иванов Иван', 'ivanov@example.com', '1990-01-01', 'Москва'),
+(2, 'organization_rep', 'Петров Петр', 'petrov@example.com', '1985-05-05', 'Санкт-Петербург');
+
+INSERT INTO user_oauth (user_id, provider_id, provider_user_id, access_token, refresh_token, expires_at) VALUES 
+(1, 1, 'google-oauth-id-123', 'access-token-123', 'refresh-token-123', '2023-12-31T23:59:59Z'),
+(2, 2, 'facebook-oauth-id-456', 'access-token-456', 'refresh-token-456', '2023-12-31T23:59:59Z');
+
+INSERT INTO skill (name, description) VALUES 
+('Навык 1', 'Описание навыка 1'),
+('Навык 2', 'Описание навыка 2');
+
+INSERT INTO user_skill (user_id, skill_id, level) VALUES 
+(1, 1, 'beginner'),
+(1, 2, 'intermediate'),
+(2, 1, 'advanced');
+
+INSERT INTO individual_event (organiser_id, title, description, date_start, date_end, volunteers_required, age_restriction) VALUES 
+(1, 'Ивент 1', 'Описание ивента 1', '2023-11-01 10:00:00', '2023-11-01 18:00:00', 5, 18),
+(2, 'Ивент 2', 'Описание ивента 2', '2023-11-05 10:00:00', '2023-11-05 18:00:00', 10, 16);
+
+INSERT INTO mass_event (organisation_id, title, description, date_start, date_end, work_hours, address, volunteers_required, age_restriction) VALUES 
+(1, 'Массовый ивент 1', 'Описание массового ивента 1', '2023-11-10 10:00:00', '2023-11-10 18:00:00', 8, 'Адрес массового ивента 1', 20, 18),
+(2, 'Массовый ивент 2', 'Описание массового ивента 2', '2023-11-15 10:00:00', '2023-11-15 18:00:00', 6, 'Адрес массового ивента 2', 15, 16);
+
+INSERT INTO participation_query (event_id, participant_id, status) VALUES 
+(1, 1, 'accepted'),
+(1, 2, 'pending'),
+(2, 1, 'rejected');
+
+INSERT INTO volunteer_book_entry (user_id, event_id, content) VALUES 
+(1, 1, 'Запись 1 в волонтерскую книжку'),
+(2, 1, 'Запись 2 в волонтерскую книжку'),
+(1, 2, 'Запись 3 в волонтерскую книжку');
+
+INSERT INTO review (reviewer_id, reviewed_id, event_id, rating, content) VALUES 
+(1, 2, 1, 5, 'Отличная работа!'),
+(2, 1, 1, 4, 'Хороший волонтер, но есть над чем поработать.'),
+(1, 2, 2, 5, 'Превосходно!');
+
+INSERT INTO leaderboard (user_id, name, volunteer_hours, place) VALUES 
+(1, 'Иванов Иван', 120.5, 1),
+(2, 'Петров Петр', 95.0, 2);
+
+-- ============================================
+-- ПРИМЕР ЗАПРОСОВ
+-- ============================================
+
+-- 1. Получить список всех пользователей с их ролями
+SELECT id, name, email, role FROM "user";
+
+-- 2. Получить информацию о конкретном пользователе по email
+SELECT * FROM "user" WHERE email = 'ivanov@example.com';
+
+-- 3. Получить список всех организаций
+SELECT * FROM organisation;
+
+-- 4. Получить список всех мероприятий (индивидуальных и массовых)
+SELECT 
+    ie.id AS event_id,
+    ie.title AS event_title,
+    me.title AS mass_event_title,
+    ie.date_start,
+    ie.date_end,
+    me.organisation_id
+FROM 
+    individual_event ie
+FULL OUTER JOIN 
+    mass_event me ON ie.id = me.id
+ORDER BY 
+    date_start;
+
+-- 5. Получить список всех навыков
+SELECT * FROM skill;
+
+-- 6. Получить список всех отзывов о волонтерах
+SELECT 
+    r.id,
+    r.rating,
+    r.content,
+    r.created_at,
+    rv.name AS reviewer_name,
+    vu.name AS reviewed_name,
+    ie.title AS event_title
+FROM 
+    review r
+JOIN 
+    "user" rv ON r.reviewer_id = rv.id
+JOIN 
+    "user" vu ON r.reviewed_id = vu.id
+JOIN 
+    individual_event ie ON r.event_id = ie.id
+ORDER BY 
+    r.created_at DESC;
+
+-- 7. Получить таблицу лидеров по отработанным часам
+SELECT 
+    user_id,
+    name,
+    volunteer_hours,
+    place
+FROM 
+    leaderboard
+ORDER BY 
+    place;
+
+-- 8. Получить статистику по мероприятиям (количество участников, средний рейтинг и т.д.)
+SELECT 
+    me.id,
+    me.title,
+    COUNT(DISTINCT pq.participant_id) AS participant_count,
+    AVG(r.rating) AS average_rating
+FROM 
+    mass_event me
+LEFT JOIN 
+    participation_query pq ON me.id = pq.event_id
+LEFT JOIN 
+    review r ON me.id = r.event_id
+GROUP BY 
+    me.id, me.title
+ORDER BY 
+    me.date_start;
+
+-- 9. Получить список всех OAuth провайдеров
+SELECT * FROM oauth_provider;
+
+-- 10. Получить информацию о запросах на участие в мероприятия
+SELECT 
+    pq.id,
+    pq.status,
+    pq.application_date,
+    me.title AS event_title,
+    u.name AS participant_name
+FROM 
+    participation_query pq
+JOIN 
+    mass_event me ON pq.event_id = me.id
+JOIN 
+    "user" u ON pq.participant_id = u.id
+ORDER BY 
+    pq.application_date DESC;
