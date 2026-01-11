@@ -1,7 +1,10 @@
 <script setup>
 import { Button, Toolbar } from 'primevue'
 import router from '@/router'
-import ThemeToggleButton from './ThemeToggleButton.vue'
+import RoundButton from './RoundButton.vue'
+import { useThemeMode } from '@/composables/useThemeMode'
+
+const { isDark, toggleTheme } = useThemeMode()
 
 const auth_state = true
 </script>
@@ -14,7 +17,7 @@ const auth_state = true
       <Button @click="router.push({ name: 'leaderboard' })" label="Рейтинг волонтеров" />
     </template>
     <template #end>
-      <ThemeToggleButton />
+      <RoundButton :icon="isDark ? 'pi pi-moon' : 'pi pi-sun'" @click="toggleTheme" />
       <template v-if="auth_state">
         <Button @click="router.push({ name: 'profile-view' })" label="Профиль" />
       </template>
