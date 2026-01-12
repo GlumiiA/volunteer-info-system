@@ -12,17 +12,21 @@ const auth_state = true
 <template>
   <Toolbar class="toolbar">
     <template #start>
-      <Button @click="router.push({ name: 'home' })" label="Главная страница" />
-      <Button @click="router.push({ name: 'search' })" label="Поиск заявок" />
-      <Button @click="router.push({ name: 'leaderboard' })" label="Рейтинг волонтеров" />
+      <Button @click="router.push({ name: 'home' })" label="Главная страница" size="small" />
+      <Button @click="router.push({ name: 'search' })" label="Поиск заявок" size="small" />
+      <Button
+        @click="router.push({ name: 'leaderboard' })"
+        label="Рейтинг волонтеров"
+        size="small"
+      />
     </template>
     <template #end>
       <RoundButton :icon="isDark ? 'pi pi-moon' : 'pi pi-sun'" @click="toggleTheme" />
       <template v-if="auth_state">
-        <Button @click="router.push({ name: 'profile-view' })" label="Профиль" />
+        <Button @click="router.push({ name: 'profile-view' })" label="Профиль" size="small" />
       </template>
       <template v-else>
-        <Button @click="router.push({ name: 'auth' })" label="Авторизоваться" />
+        <Button @click="router.push({ name: 'auth' })" label="Авторизоваться" size="small" />
       </template>
     </template>
   </Toolbar>

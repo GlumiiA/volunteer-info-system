@@ -27,7 +27,7 @@ const emit = defineEmits(['click'])
 
 <style scoped>
 .round-button {
-  width: var(--space-xl);
-  height: var(--space-xl);
+  width: var(--space-l);
+  height: var(--space-l);
 }
 </style>
