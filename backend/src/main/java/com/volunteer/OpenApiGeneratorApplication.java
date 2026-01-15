@@ -13,7 +13,7 @@ import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGe
     nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class
 )
 @ComponentScan(
-    basePackages = {"com.volunteer", "com.volunteer.api" , "org.openapitools.configuration"},
+    basePackages = {"com.volunteer", "com.volunteer.controller" , "com.volunteer.config"},
     nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class
 )
 public class OpenApiGeneratorApplication {
