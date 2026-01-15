@@ -1,4 +1,4 @@
-package com.volunteer.dto;
+package com.volunteer.organization.dto;
 
 import java.net.URI;
 import java.util.Objects;

@@ -12,6 +12,12 @@ org-springframework-boot-spring-boot-starter-test = "3.1.3"
 org-springframework-boot-spring-boot-starter-validation = "3.1.3"
 org-springframework-boot-spring-boot-starter-web = "3.1.3"
 org-springframework-data-spring-data-commons = "3.1.3"
+org-springframework-boot-spring-boot-starter-data-jpa = "3.1.3"
+org-springframework-boot-spring-boot-starter-security = "3.1.3"
+org-postgresql = "42.7.1"
+org-liquibase = "4.24.0"
+org-projectlombok = "1.18.30"
+io-jsonwebtoken-jjwt = "0.12.3"
 
 [libraries]
 com-fasterxml-jackson-core-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "com-fasterxml-jackson-core-jackson-databind" }
@@ -24,3 +30,11 @@ org-springframework-boot-spring-boot-starter-test = { module = "org.springframew
 org-springframework-boot-spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "org-springframework-boot-spring-boot-starter-validation" }
 org-springframework-boot-spring-boot-starter-web = { module = "org.springframework.boot:spring-boot-starter-web", version.ref = "org-springframework-boot-spring-boot-starter-web" }
 org-springframework-data-spring-data-commons = { module = "org.springframework.data:spring-data-commons", version.ref = "org-springframework-data-spring-data-commons" }
+org-springframework-boot-spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa", version.ref = "org-springframework-boot-spring-boot-starter-data-jpa" }
+org-springframework-boot-spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security", version.ref = "org-springframework-boot-spring-boot-starter-security" }
+org-postgresql = { module = "org.postgresql:postgresql", version.ref = "org-postgresql" }
+org-liquibase = { module = "org.liquibase:liquibase-core", version.ref = "org-liquibase" }
+org-projectlombok = { module = "org.projectlombok:lombok", version.ref = "org-projectlombok" }
+io-jsonwebtoken-jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "io-jsonwebtoken-jjwt" }
+io-jsonwebtoken-jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "io-jsonwebtoken-jjwt" }
+io-jsonwebtoken-jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "io-jsonwebtoken-jjwt" }

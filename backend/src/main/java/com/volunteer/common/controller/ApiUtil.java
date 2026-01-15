@@ -1,4 +1,4 @@
-package com.volunteer.controller;
+package com.volunteer.common.controller;
 
 import org.springframework.web.context.request.NativeWebRequest;
 

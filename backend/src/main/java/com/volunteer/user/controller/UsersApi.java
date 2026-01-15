@@ -3,21 +3,19 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-package com.volunteer.controller;
+package com.volunteer.user.controller;
 
-import com.volunteer.dto.Error;
-import org.springframework.lang.Nullable;
-import com.volunteer.dto.OrganizationRoleRequest;
-import com.volunteer.dto.Review;
-import com.volunteer.dto.UpdateUserRequest;
-import com.volunteer.dto.User;
-import com.volunteer.dto.UsersMeAvatarPost200Response;
-import com.volunteer.dto.UsersMeEventsGet200Response;
-import com.volunteer.dto.UsersMeVolunteerBookGet200Response;
-import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import com.volunteer.common.controller.ApiUtil;
+import com.volunteer.common.dto.Error;
+import com.volunteer.organization.dto.OrganizationRoleRequest;
+import com.volunteer.entity.Review;
+import com.volunteer.user.dto.UpdateUserRequest;
+import com.volunteer.entity.User;
+import com.volunteer.user.dto.UsersMeAvatar;
+import com.volunteer.user.dto.UsersMeEvents;
+import com.volunteer.user.dto.UsersMeVolunteerBook;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,7 +23,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -35,9 +32,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import jakarta.annotation.Generated;
 
@@ -68,7 +64,7 @@ public interface UsersApi {
         tags = { "users" },
         responses = {
             @ApiResponse(responseCode = "200", description = "Аватар успешно загружен", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = UsersMeAvatarPost200Response.class))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = UsersMeAvatar.class))
             }),
             @ApiResponse(responseCode = "400", description = "Ошибка валидации файла", content = {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
@@ -90,7 +86,7 @@ public interface UsersApi {
         produces = { "application/json" },
         consumes = { "multipart/form-data" }
     )
-    default ResponseEntity<UsersMeAvatarPost200Response> usersMeAvatarPost(
+    default ResponseEntity<UsersMeAvatar> usersMeAvatarPost(
         @Parameter(name = "file", description = "Файл изображения (JPEG, PNG)", required = true) @RequestPart(value = "file", required = true) MultipartFile file
     ) {
         getRequest().ifPresent(request -> {
@@ -139,7 +135,7 @@ public interface UsersApi {
         tags = { "users" },
         responses = {
             @ApiResponse(responseCode = "200", description = "Список заявок успешно получен", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = UsersMeEventsGet200Response.class))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = UsersMeEvents.class))
             }),
             @ApiResponse(responseCode = "401", description = "Неавторизованный доступ", content = {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
@@ -157,7 +153,7 @@ public interface UsersApi {
         value = UsersApi.PATH_USERS_ME_EVENTS_GET,
         produces = { "application/json" }
     )
-    default ResponseEntity<UsersMeEventsGet200Response> usersMeEventsGet(
+    default ResponseEntity<UsersMeEvents> usersMeEventsGet(
         @Parameter(name = "status", description = "Фильтр по статусу заявок", in = ParameterIn.QUERY) @Valid @RequestParam(value = "status", required = false, defaultValue = "all") String status
     ) {
         getRequest().ifPresent(request -> {
@@ -468,7 +464,7 @@ public interface UsersApi {
         tags = { "users" },
         responses = {
             @ApiResponse(responseCode = "200", description = "Волонтерская книжка успешно получена", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = UsersMeVolunteerBookGet200Response.class))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = UsersMeVolunteerBook.class))
             }),
             @ApiResponse(responseCode = "401", description = "Неавторизованный доступ", content = {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
@@ -486,7 +482,7 @@ public interface UsersApi {
         value = UsersApi.PATH_USERS_ME_VOLUNTEER_BOOK_GET,
         produces = { "application/json" }
     )
-    default ResponseEntity<UsersMeVolunteerBookGet200Response> usersMeVolunteerBookGet(
+    default ResponseEntity<UsersMeVolunteerBook> usersMeVolunteerBookGet(
         
     ) {
         getRequest().ifPresent(request -> {

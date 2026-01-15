@@ -3,20 +3,19 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-package com.volunteer.controller;
+package com.volunteer.admin.controller;
 
-import com.volunteer.dto.AdminOrganizationRequestsRequestIdRejectPostRequest;
-import com.volunteer.dto.CreateOrganizationRequest;
-import com.volunteer.dto.Error;
+import com.volunteer.admin.dto.AdminOrganizationRequests;
+import com.volunteer.admin.dto.UpdateUserRoleRequest;
+import com.volunteer.common.controller.ApiUtil;
+import com.volunteer.common.dto.Error;
+import com.volunteer.organization.dto.CreateOrganizationRequest;
+import com.volunteer.organization.dto.OrganizationRoleRequestItem;
 import org.springframework.lang.Nullable;
-import com.volunteer.dto.Organization;
-import com.volunteer.dto.OrganizationRoleRequestItem;
-import com.volunteer.dto.UpdateUserRoleRequest;
-import com.volunteer.dto.User;
-import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import com.volunteer.entity.Organization;
+import com.volunteer.entity.User;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,19 +23,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import jakarta.annotation.Generated;
 
@@ -238,7 +234,7 @@ public interface AdminApi {
     )
     default ResponseEntity<Void> adminOrganizationRequestsRequestIdRejectPost(
         @NotNull @Parameter(name = "requestId", description = "ID запроса", required = true, in = ParameterIn.PATH) @PathVariable("requestId") Integer requestId,
-        @Parameter(name = "AdminOrganizationRequestsRequestIdRejectPostRequest", description = "") @Valid @RequestBody(required = false) @Nullable AdminOrganizationRequestsRequestIdRejectPostRequest adminOrganizationRequestsRequestIdRejectPostRequest
+        @Parameter(name = "AdminOrganizationRequestsRequestIdRejectPostRequest", description = "") @Valid @RequestBody(required = false) @Nullable AdminOrganizationRequests adminOrganizationRequestsRequestIdRejectPostRequest
     ) {
         getRequest().ifPresent(request -> {
             for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {

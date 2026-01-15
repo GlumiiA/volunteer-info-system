@@ -19,3 +19,5 @@ You can view the api documentation in swagger-ui by pointing to
 http://localhost:8080/swagger-ui.html
 
 Change default port value in application.properties
+
+docker run --name course_work_db -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=12345 -e POSTGRES_DB=postgres -p 5433:5433 -d postgres:latest

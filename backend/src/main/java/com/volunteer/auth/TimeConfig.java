@@ -12,4 +12,3 @@ public class TimeConfig {
         return Clock.systemUTC();
     }
 }
-

@@ -1,0 +1,14 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <include file="changeset/001-create-organisations-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/002-create-users-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/003-create-individual-events-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/004-create-mass-events-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/005-create-reviews-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/006-create-volunteer-book-entries-table.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

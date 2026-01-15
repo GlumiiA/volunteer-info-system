@@ -26,20 +26,20 @@ public class JwtProvider {
         this.key = Keys.hmacShaKeyFor(decodedKey);
     }
 
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String email) {
         Date now = Date.from(clock.instant());
         Date expiry = Date.from(clock.instant().plusMillis(jwtProperties.getExpiration()));
 
         return Jwts.builder()
-                .setSubject(username)
+                .subject(email)
                 .claim("id", userId)
-                .setIssuedAt(now)
-                .setExpiration(expiry)
-                .signWith(key, SignatureAlgorithm.HS256)
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(key)
                 .compact();
     }
 
-    public String getUsername(String token) {
+    public String getEmail(String token) {
         return getAllClaims(token).getSubject();
     }
 
@@ -48,10 +48,10 @@ public class JwtProvider {
     }
 
     private Claims getAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
+        return Jwts.parser()
+                .verifyWith(key)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

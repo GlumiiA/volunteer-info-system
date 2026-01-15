@@ -3,16 +3,15 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-package com.volunteer.controller;
+package com.volunteer.participation.controller;
 
-import com.volunteer.dto.Error;
-import com.volunteer.dto.EventsIndividualEventIdParticipantsUserIdReviewPostRequest;
-import com.volunteer.dto.EventsMassIdParticipantsGet200Response;
-import com.volunteer.dto.EventsMassIdRequestsGet200ResponseInner;
-import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import com.volunteer.common.controller.ApiUtil;
+import com.volunteer.common.dto.Error;
+import com.volunteer.participation.dto.EventsIndividualEventIdParticipants;
+import com.volunteer.participation.dto.EventsMassIdParticipants;
+import com.volunteer.participation.dto.EventsMassIdRequests;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -20,19 +19,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.context.request.NativeWebRequest;
-import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import jakarta.annotation.Generated;
 
@@ -96,7 +92,7 @@ public interface ParticipationApi {
     default ResponseEntity<Void> eventsIndividualEventIdParticipantsUserIdReviewPost(
         @NotNull @Parameter(name = "eventId", description = "Уникальный идентификатор заявки", required = true, in = ParameterIn.PATH) @PathVariable("eventId") Integer eventId,
         @NotNull @Parameter(name = "userId", description = "Уникальный идентификатор волонтера", required = true, in = ParameterIn.PATH) @PathVariable("userId") Integer userId,
-        @Parameter(name = "EventsIndividualEventIdParticipantsUserIdReviewPostRequest", description = "", required = true) @Valid @RequestBody EventsIndividualEventIdParticipantsUserIdReviewPostRequest eventsIndividualEventIdParticipantsUserIdReviewPostRequest
+        @Parameter(name = "EventsIndividualEventIdParticipantsUserIdReviewPostRequest", description = "", required = true) @Valid @RequestBody EventsIndividualEventIdParticipants eventsIndividualEventIdParticipantsUserIdReviewPostRequest
     ) {
         getRequest().ifPresent(request -> {
             for (MediaType mediaType: MediaType.parseMediaTypes(request.getHeader("Accept"))) {
@@ -310,7 +306,7 @@ public interface ParticipationApi {
         tags = { "participation" },
         responses = {
             @ApiResponse(responseCode = "200", description = "Список участников успешно получен", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = EventsMassIdParticipantsGet200Response.class))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = EventsMassIdParticipants.class))
             }),
             @ApiResponse(responseCode = "401", description = "Неавторизованный доступ", content = {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
@@ -334,7 +330,7 @@ public interface ParticipationApi {
         value = ParticipationApi.PATH_EVENTS_INDIVIDUAL_ID_PARTICIPANTS_GET,
         produces = { "application/json" }
     )
-    default ResponseEntity<EventsMassIdParticipantsGet200Response> eventsIndividualIdParticipantsGet(
+    default ResponseEntity<EventsMassIdParticipants> eventsIndividualIdParticipantsGet(
         @NotNull @Parameter(name = "id", description = "Уникальный идентификатор заявки", required = true, in = ParameterIn.PATH) @PathVariable("id") Integer id
     ) {
         getRequest().ifPresent(request -> {
@@ -463,7 +459,7 @@ public interface ParticipationApi {
         tags = { "participation" },
         responses = {
             @ApiResponse(responseCode = "200", description = "Список запросов успешно получен", content = {
-                @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = EventsMassIdRequestsGet200ResponseInner.class)))
+                @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = EventsMassIdRequests.class)))
             }),
             @ApiResponse(responseCode = "401", description = "Неавторизованный доступ", content = {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
@@ -487,7 +483,7 @@ public interface ParticipationApi {
         value = ParticipationApi.PATH_EVENTS_INDIVIDUAL_ID_REQUESTS_GET,
         produces = { "application/json" }
     )
-    default ResponseEntity<List<EventsMassIdRequestsGet200ResponseInner>> eventsIndividualIdRequestsGet(
+    default ResponseEntity<List<EventsMassIdRequests>> eventsIndividualIdRequestsGet(
         @NotNull @Parameter(name = "id", description = "Уникальный идентификатор заявки", required = true, in = ParameterIn.PATH) @PathVariable("id") Integer id
     ) {
         getRequest().ifPresent(request -> {
@@ -702,7 +698,7 @@ public interface ParticipationApi {
         tags = { "participation" },
         responses = {
             @ApiResponse(responseCode = "200", description = "Список участников успешно получен", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = EventsMassIdParticipantsGet200Response.class))
+                @Content(mediaType = "application/json", schema = @Schema(implementation = EventsMassIdParticipants.class))
             }),
             @ApiResponse(responseCode = "401", description = "Неавторизованный доступ", content = {
                 @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
@@ -726,7 +722,7 @@ public interface ParticipationApi {
         value = ParticipationApi.PATH_EVENTS_MASS_ID_PARTICIPANTS_GET,
         produces = { "application/json" }
     )
-    default ResponseEntity<EventsMassIdParticipantsGet200Response> eventsMassIdParticipantsGet(
+    default ResponseEntity<EventsMassIdParticipants> eventsMassIdParticipantsGet(
         @NotNull @Parameter(name = "id", description = "Уникальный идентификатор мероприятия", required = true, in = ParameterIn.PATH) @PathVariable("id") Integer id
     ) {
         getRequest().ifPresent(request -> {
@@ -845,41 +841,19 @@ public interface ParticipationApi {
      * @return Список запросов успешно получен (status code 200)
      *         or Неавторизованный доступ (status code 401)
      *         or Доступ запрещен (status code 403)
-     *         or Мероприятие не найдено (status code 404)
-     *         or Внутренняя ошибка сервера (status code 500)
-     */
-    @Operation(
-        operationId = "eventsMassIdRequestsGet",
-        summary = "Получение списка запросов на участие в массовом мероприятии",
-        description = "Представители организации получают список запросов на участие для принятия/отклонения",
-        tags = { "participation" },
-        responses = {
-            @ApiResponse(responseCode = "200", description = "Список запросов успешно получен", content = {
-                @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = EventsMassIdRequestsGet200ResponseInner.class)))
-            }),
-            @ApiResponse(responseCode = "401", description = "Неавторизованный доступ", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
-            }),
-            @ApiResponse(responseCode = "403", description = "Доступ запрещен", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
-            }),
-            @ApiResponse(responseCode = "404", description = "Мероприятие не найдено", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
-            }),
-            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера", content = {
-                @Content(mediaType = "application/json", schema = @Schema(implementation = Error.class))
-            })
-        },
-        security = {
-            @SecurityRequirement(name = "bearerAuth")
-        }
-    )
+//     *         or Мероприятие не найдено (status code 404)
+//     *         or Внутренняя ошибка сервера (status code 500)
+//     */
+//    @Operation(
+//        operationId = "eventsMassIdRequestsGet",
+//        summary = "Получение списка запросов на участие в массовом мероприятии",
+//        description = "Представители организации получают список запросов на участие для принятия/отклонения",
     @RequestMapping(
         method = RequestMethod.GET,
         value = ParticipationApi.PATH_EVENTS_MASS_ID_REQUESTS_GET,
         produces = { "application/json" }
     )
-    default ResponseEntity<List<EventsMassIdRequestsGet200ResponseInner>> eventsMassIdRequestsGet(
+    default ResponseEntity<List<EventsMassIdRequests>> eventsMassIdRequestsGet(
         @NotNull @Parameter(name = "id", description = "Уникальный идентификатор мероприятия", required = true, in = ParameterIn.PATH) @PathVariable("id") Integer id
     ) {
         getRequest().ifPresent(request -> {
