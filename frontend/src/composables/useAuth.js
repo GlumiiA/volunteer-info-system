@@ -45,6 +45,21 @@ const MOCK_ORG_USER = {
   organizationName: 'Красный Крест'
 }
 
+// Мок-данные администратора для тестирования
+const MOCK_ADMIN_USER = {
+  id: 3,
+  email: 'admin@example.com',
+  name: 'Администратор Системы',
+  role: 'ADMIN',
+  description: 'Я администратор системы',
+  birthday: new Date('1990-01-01'),
+  location: 'Санкт-Петербург',
+  volunteerHours: 0,
+  rating: 5.0,
+  organisationId: null,
+  organizationName: null
+}
+
 const MOCK_TOKEN = 'mock_jwt_token_12345'
 
 /**
