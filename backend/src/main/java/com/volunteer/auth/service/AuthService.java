@@ -21,25 +21,20 @@ public class AuthService {
     }
 
     public AuthResponse register(String email, String password, String fullName) {
-        // Проверяем, существует ли пользователь
         if (userRepository.existsByEmail(email)) {
             throw new RuntimeException("User with email " + email + " already exists");
         }
 
-        // Создаем нового пользователя
         User user = new User();
         user.setEmail(email);
         user.setUsername(fullName);
         user.setRole(UserRole.USER);
         user.setPasswordHash(passwordEncoder.encode(password));
 
-        // Сохраняем пользователя
         User savedUser = userRepository.save(user);
 
-        // Генерируем токен
         String token = jwtProvider.generateToken(Long.valueOf(savedUser.getId()), savedUser.getEmail());
 
-        // Формируем ответ
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setUser(savedUser);
@@ -48,19 +43,15 @@ public class AuthService {
     }
 
     public AuthResponse login(String email, String password) {
-        // Ищем пользователя по email
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Invalid email or password"));
 
-        // Проверяем пароль
         if (!passwordEncoder.matches(password, user.getPasswordHash())) {
             throw new RuntimeException("Invalid email or password");
         }
 
-        // Генерируем токен
         String token = jwtProvider.generateToken(Long.valueOf(user.getId()), user.getEmail());
 
-        // Формируем ответ
         AuthResponse response = new AuthResponse();
         response.setToken(token);
         response.setUser(user);
