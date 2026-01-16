@@ -117,9 +117,13 @@ const handleOAuth = (provider) => {
           <div v-if="isLogin" class="test-credentials-hint">
             <i class="pi pi-info-circle"></i>
             <div>
-              <strong>Тестовая учетная запись:</strong><br />
-              Email: <code>test@example.com</code><br />
-              Пароль: <code>test123456</code>
+              <strong>Тестовые учетные записи:</strong><br />
+              <div class="test-account">
+                👤 Пользователь: <code>test@example.com</code> / <code>test123456</code>
+              </div>
+              <div class="test-account">
+                🏢 Представитель организации: <code>org@example.com</code> / <code>test123456</code>
+              </div>
             </div>
           </div>
 

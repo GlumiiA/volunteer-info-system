@@ -22,10 +22,27 @@ const MOCK_USER = {
   name: 'Тестовый Пользователь',
   role: 'USER',
   description: 'Это тестовая учетная запись для демонстрации функционала',
-  birthday: '1995-05-15',
+  birthday: new Date('1995-05-15'),
   location: 'Санкт-Петербург',
   volunteerHours: 42.5,
-  rating: 4.8
+  rating: 4.8,
+  organisationId: null,
+  organizationName: null
+}
+
+// Мок-данные представителя организации для тестирования
+const MOCK_ORG_USER = {
+  id: 2,
+  email: 'org@example.com',
+  name: 'Представитель Организации',
+  role: 'ORG_REPRESENTATIVE',
+  description: 'Я представляю волонтерскую организацию',
+  birthday: new Date('1988-03-20'),
+  location: 'Санкт-Петербург',
+  volunteerHours: 120,
+  rating: 4.9,
+  organisationId: 1,
+  organizationName: 'Красный Крест'
 }
 
 const MOCK_TOKEN = 'mock_jwt_token_12345'
