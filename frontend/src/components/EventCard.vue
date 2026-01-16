@@ -1,11 +1,14 @@
 <script setup>
 import { Card } from 'primevue'
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 /**
  * @typedef {import('@/types/event').EventEntry} EventEntry
  * @typedef {import('@/types/event').EventType} EventType
  */
+
+const router = useRouter()
 
 const props = defineProps({
   event: {
@@ -18,10 +21,14 @@ const shortenedDescription = computed(() => {
   const maxLength = 100
   return props.event.description.substring(0, maxLength).replace(/\s\S*$/, '') + '...'
 })
+
+const handleClick = () => {
+  router.push({ name: 'entry-view', params: { id: props.event.id } })
+}
 </script>
 
 <template>
-  <Card class="event-card">
+  <Card class="event-card" @click="handleClick">
     <template #header>
       <img class="event-header" alt="header" :src="event.headerImage" />
     </template>
@@ -49,6 +56,13 @@ const shortenedDescription = computed(() => {
 <style scoped>
 .event-card {
   overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .event-header {

@@ -3,10 +3,14 @@ import { Button, Toolbar } from 'primevue'
 import router from '@/router'
 import RoundButton from './RoundButton.vue'
 import { useThemeMode } from '@/composables/useThemeMode'
+import { useAuth } from '@/composables/useAuth'
 
 const { isDark, toggleTheme } = useThemeMode()
+const { isAuthenticated, logout } = useAuth()
 
-const auth_state = true
+const handleLogout = async () => {
+  await logout()
+}
 </script>
 
 <template>
@@ -22,8 +26,9 @@ const auth_state = true
     </template>
     <template #end>
       <RoundButton :icon="isDark ? 'pi pi-moon' : 'pi pi-sun'" @click="toggleTheme" />
-      <template v-if="auth_state">
+      <template v-if="isAuthenticated">
         <Button @click="router.push({ name: 'profile-view' })" label="Профиль" size="small" />
+        <Button @click="handleLogout" label="Выйти" size="small" severity="secondary" />
       </template>
       <template v-else>
         <Button @click="router.push({ name: 'auth' })" label="Авторизоваться" size="small" />
