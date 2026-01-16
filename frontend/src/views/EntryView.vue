@@ -1,7 +1,17 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Panel, Card, Button, Tag, Avatar, Divider, Chip, Accordion, AccordionPanel } from 'primevue'
+import {
+  Panel,
+  Card,
+  Button,
+  Tag,
+  Avatar,
+  Divider,
+  Chip,
+  Accordion,
+  AccordionPanel,
+} from 'primevue'
 import { useToast } from 'primevue'
 import cogImage from '@/assets/images/cog.png'
 import pawImage from '@/assets/images/paw.png'
@@ -169,7 +179,7 @@ const handleJoin = async () => {
     setTimeout(() => {
       isParticipant.value = true
       participantStatus.value = 'PENDING'
-      
+
       // Добавляем текущего пользователя в список участников со статусом PENDING
       participants.value.push({
         id: currentUser.value.id,
@@ -177,13 +187,14 @@ const handleJoin = async () => {
         avatar: null,
         status: 'PENDING',
       })
-      
+
       entry.value.volunteersRegistered += 1
 
       toast.add({
         severity: 'success',
         summary: 'Заявка отправлена',
-        detail: 'Ваша заявка на участие успешно отправлена. Ожидайте подтверждения от организатора.',
+        detail:
+          'Ваша заявка на участие успешно отправлена. Ожидайте подтверждения от организатора.',
         life: 3000,
       })
     }, 500)
@@ -214,7 +225,7 @@ const handleLeave = async () => {
     setTimeout(() => {
       isParticipant.value = false
       participantStatus.value = null
-      
+
       // Удаляем текущего пользователя из списка участников
       const index = participants.value.findIndex((p) => p.id === currentUser.value.id)
       if (index > -1) {
@@ -284,19 +295,17 @@ const getParticipantStatusLabel = (status) => {
 <template>
   <Panel class="entry-view-panel">
     <div class="back-button-container">
-      <Button
-        label="Назад к заявкам"
-        icon="pi pi-arrow-left"
-        @click="router.push({ name: 'search' })"
-        text
-      />
+      <Button @click="router.push({ name: 'search' })" text>
+        <i class="pi pi-arrow-left" />
+        <span>Назад к заявкам</span>
+      </Button>
     </div>
-    
+
     <div v-if="isLoading" class="loading-container">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
       <p>Загрузка...</p>
     </div>
-    
+
     <template v-else>
       <div class="entry-header">
         <div class="entry-header-top">
@@ -304,176 +313,173 @@ const getParticipantStatusLabel = (status) => {
           <Tag :value="getStatusLabel(entry.status)" :severity="getStatusSeverity(entry.status)" />
         </div>
         <div class="entry-actions">
-          <Button
-            v-if="isAuthor"
-            label="Редактировать"
-            icon="pi pi-pencil"
-            @click="handleEdit"
-            outlined
-          />
-          <Button
-            v-if="isAuthor"
-            label="Удалить"
-            icon="pi pi-trash"
-            @click="handleDelete"
-            severity="danger"
-            outlined
-          />
+          <Button v-if="isAuthor" @click="handleEdit" outlined>
+            <i class="pi pi-pencil" />
+            <span>Редактировать</span>
+          </Button>
+          <Button v-if="isAuthor" @click="handleDelete" severity="danger" outlined>
+            <i class="pi pi-trash" />
+            <span>Удалить</span>
+          </Button>
           <Button
             v-if="!isAuthor && !isParticipant && entry.status === 'ACTIVE'"
-            label="Подать заявку"
-            icon="pi pi-user-plus"
             @click="handleJoin"
-          />
+          >
+            <i class="pi pi-user-plus" />
+            <span>Подать заявку</span>
+          </Button>
           <Button
             v-if="!isAuthor && isParticipant && entry.status === 'ACTIVE'"
             label="Отозвать заявку"
             icon="pi pi-user-minus"
             @click="handleLeave"
             outlined
-          />
+          >
+            <i class="pi pi-user-minus" />
+            <span>Отозвать заявку</span>
+          </Button>
         </div>
       </div>
 
       <Card class="entry-details">
-      <template #header>
-        <img v-if="entry.headerImage" class="entry-image" alt="header" :src="entry.headerImage" />
-      </template>
-      <template #content>
-        <div class="detail-section">
-          <h3>Описание</h3>
-          <p>{{ entry.description }}</p>
-        </div>
+        <template #header>
+          <img v-if="entry.headerImage" class="entry-image" alt="header" :src="entry.headerImage" />
+        </template>
+        <template #content>
+          <div class="detail-section">
+            <h3>Описание</h3>
+            <p>{{ entry.description }}</p>
+          </div>
 
-        <Divider />
+          <Divider />
 
-        <div class="detail-section">
-          <h3>Информация о мероприятии</h3>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <i class="pi pi-calendar" />
-              <div>
-                <div class="detail-label">Дата проведения</div>
-                <div class="detail-value">{{ entry.dateStart }} - {{ entry.dateEnd }}</div>
+          <div class="detail-section">
+            <h3>Информация о мероприятии</h3>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <i class="pi pi-calendar" />
+                <div>
+                  <div class="detail-label">Дата проведения</div>
+                  <div class="detail-value">{{ entry.dateStart }} - {{ entry.dateEnd }}</div>
+                </div>
               </div>
-            </div>
 
-            <div class="detail-item" v-if="entry.address">
-              <i class="pi pi-map-marker" />
-              <div>
-                <div class="detail-label">Адрес</div>
-                <div class="detail-value">{{ entry.address }}</div>
+              <div class="detail-item" v-if="entry.address">
+                <i class="pi pi-map-marker" />
+                <div>
+                  <div class="detail-label">Адрес</div>
+                  <div class="detail-value">{{ entry.address }}</div>
+                </div>
               </div>
-            </div>
 
-            <div class="detail-item">
-              <i class="pi pi-users" />
-              <div>
-                <div class="detail-label">Волонтеров</div>
-                <div class="detail-value">
-                  {{ entry.volunteersRegistered }} / {{ entry.volunteersRequired }}
+              <div class="detail-item">
+                <i class="pi pi-users" />
+                <div>
+                  <div class="detail-label">Волонтеров</div>
+                  <div class="detail-value">
+                    {{ entry.volunteersRegistered }} / {{ entry.volunteersRequired }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="detail-item">
+                <i class="pi pi-id-card" />
+                <div>
+                  <div class="detail-label">Возрастное ограничение</div>
+                  <div class="detail-value">{{ entry.ageRestriction }}+</div>
+                </div>
+              </div>
+
+              <div class="detail-item" v-if="entry.hoursToWork">
+                <i class="pi pi-clock" />
+                <div>
+                  <div class="detail-label">Часов работы</div>
+                  <div class="detail-value">{{ entry.hoursToWork }} ч.</div>
+                </div>
+              </div>
+
+              <div class="detail-item" v-if="entry.organizationName">
+                <i class="pi pi-building" />
+                <div>
+                  <div class="detail-label">Организация</div>
+                  <div class="detail-value">{{ entry.organizationName }}</div>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div class="detail-item">
-              <i class="pi pi-id-card" />
-              <div>
-                <div class="detail-label">Возрастное ограничение</div>
-                <div class="detail-value">{{ entry.ageRestriction }}+</div>
-              </div>
-            </div>
+          <Divider />
 
-            <div class="detail-item" v-if="entry.hoursToWork">
-              <i class="pi pi-clock" />
-              <div>
-                <div class="detail-label">Часов работы</div>
-                <div class="detail-value">{{ entry.hoursToWork }} ч.</div>
-              </div>
-            </div>
-
-            <div class="detail-item" v-if="entry.organizationName">
-              <i class="pi pi-building" />
-              <div>
-                <div class="detail-label">Организация</div>
-                <div class="detail-value">{{ entry.organizationName }}</div>
-              </div>
+          <div class="detail-section">
+            <h3>Организатор</h3>
+            <div class="author-info">
+              <Avatar :label="author.name[0]" shape="circle" size="large" />
+              <span class="author-name">{{ author.name }}</span>
             </div>
           </div>
-        </div>
 
-        <Divider />
+          <Divider v-if="isAuthor" />
 
-        <div class="detail-section">
-          <h3>Организатор</h3>
-          <div class="author-info">
-            <Avatar :label="author.name[0]" shape="circle" size="large" />
-            <span class="author-name">{{ author.name }}</span>
-          </div>
-        </div>
-
-        <Divider v-if="isAuthor" />
-
-        <div class="detail-section" v-if="isAuthor">
-          <h3>Участники</h3>
-          <div v-if="participants.length === 0" class="no-participants">
-            <p style="color: var(--text-color-secondary); font-style: italic;">
-              Пока нет заявок на участие
-            </p>
-          </div>
-          <Accordion v-else>
-            <AccordionPanel>
-              <template #header>
-                <div class="participants-header">
-                  <i class="pi pi-users" />
-                  <span>Список участников ({{ participants.length }})</span>
-                </div>
-              </template>
-              <template #default>
-                <div class="participants-list">
-                  <Card
-                    v-for="participant in participants"
-                    :key="participant.id"
-                    class="participant-card"
-                  >
-                    <template #content>
-                      <div class="participant-info">
-                        <Avatar :label="participant.name[0]" shape="circle" />
-                        <span class="participant-name">{{ participant.name }}</span>
-                        <Chip
-                          :label="getParticipantStatusLabel(participant.status)"
-                          :class="'status-' + participant.status.toLowerCase()"
-                        />
-                        <div class="participant-actions">
-                          <Button
-                            v-if="participant.status === 'PENDING'"
-                            icon="pi pi-check"
-                            @click="handleApproveParticipant(participant.id)"
-                            rounded
-                            text
-                            severity="success"
-                            title="Одобрить"
+          <div class="detail-section" v-if="isAuthor">
+            <h3>Участники</h3>
+            <div v-if="participants.length === 0" class="no-participants">
+              <p style="color: var(--text-color-secondary); font-style: italic">
+                Пока нет заявок на участие
+              </p>
+            </div>
+            <Accordion v-else>
+              <AccordionPanel>
+                <template #header>
+                  <div class="participants-header">
+                    <i class="pi pi-users" />
+                    <span>Список участников ({{ participants.length }})</span>
+                  </div>
+                </template>
+                <template #default>
+                  <div class="participants-list">
+                    <Card
+                      v-for="participant in participants"
+                      :key="participant.id"
+                      class="participant-card"
+                    >
+                      <template #content>
+                        <div class="participant-info">
+                          <Avatar :label="participant.name[0]" shape="circle" />
+                          <span class="participant-name">{{ participant.name }}</span>
+                          <Chip
+                            :label="getParticipantStatusLabel(participant.status)"
+                            :class="'status-' + participant.status.toLowerCase()"
                           />
-                          <Button
-                            v-if="participant.status === 'PENDING'"
-                            icon="pi pi-times"
-                            @click="handleRejectParticipant(participant.id)"
-                            rounded
-                            text
-                            severity="danger"
-                            title="Отклонить"
-                          />
+                          <div class="participant-actions">
+                            <Button
+                              v-if="participant.status === 'PENDING'"
+                              icon="pi pi-check"
+                              @click="handleApproveParticipant(participant.id)"
+                              rounded
+                              text
+                              severity="success"
+                              title="Одобрить"
+                            />
+                            <Button
+                              v-if="participant.status === 'PENDING'"
+                              icon="pi pi-times"
+                              @click="handleRejectParticipant(participant.id)"
+                              rounded
+                              text
+                              severity="danger"
+                              title="Отклонить"
+                            />
+                          </div>
                         </div>
-                      </div>
-                    </template>
-                  </Card>
-                </div>
-              </template>
-            </AccordionPanel>
-          </Accordion>
-        </div>
-      </template>
-    </Card>
+                      </template>
+                    </Card>
+                  </div>
+                </template>
+              </AccordionPanel>
+            </Accordion>
+          </div>
+        </template>
+      </Card>
     </template>
   </Panel>
 </template>

@@ -25,20 +25,19 @@ const goToAdmin = () => {
 // Тестовая функция для переключения роли
 const toggleAdminRole = () => {
   if (!user.value) return
-  
+
   const newRole = user.value.role === 'ADMIN' ? 'USER' : 'ADMIN'
   const updatedUser = {
     ...user.value,
-    role: newRole
+    role: newRole,
   }
-  
+
   // Обновляем данные пользователя
   const currentToken = localStorage.getItem('auth_token')
   setAuthData(currentToken, updatedUser)
-  
+
   console.log(`🔄 Роль изменена на: ${newRole}`)
 }
-
 </script>
 
 <template>
@@ -51,23 +50,19 @@ const toggleAdminRole = () => {
         label="Рейтинг волонтеров"
         size="small"
       />
-      <Button 
-        v-if="isAdmin"
-        @click="goToAdmin" 
-        label="Панель админа" 
-        size="small" 
-        severity="danger"
-        icon="pi pi-shield"
-      />
+      <Button v-if="isAdmin" @click="goToAdmin" size="small" severity="info">
+        <i class="pi pi-shield" />
+        <span>Панель админа</span>
+      </Button>
     </template>
     <template #end>
       <RoundButton :icon="isDark ? 'pi pi-moon' : 'pi pi-sun'" @click="toggleTheme" />
       <template v-if="isAuthenticated">
         <!-- Тестовая кнопка для переключения роли -->
-        <Button 
-          @click="toggleAdminRole" 
-          :label="isAdmin ? '🔧 Тест: → Юзер' : '🔧 Тест: → Админ'" 
-          size="small" 
+        <Button
+          @click="toggleAdminRole"
+          :label="isAdmin ? '🔧 Тест: → Юзер' : '🔧 Тест: → Админ'"
+          size="small"
           severity="help"
           outlined
         />

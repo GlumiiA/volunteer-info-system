@@ -67,7 +67,7 @@ const filteredEvents = computed(() => {
   if (filters.value.address && filters.value.address.trim() !== '') {
     const searchAddress = filters.value.address.toLowerCase()
     result = result.filter(
-      (event) => event.address && event.address.toLowerCase().includes(searchAddress)
+      (event) => event.address && event.address.toLowerCase().includes(searchAddress),
     )
   }
 
@@ -200,12 +200,10 @@ onMounted(() => {
     <!-- Заголовок с кнопкой создания -->
     <div class="search-header">
       <h1>Поиск заявок</h1>
-      <Button
-        label="Создать заявку"
-        icon="pi pi-plus"
-        @click="handleCreateEntry"
-        severity="success"
-      />
+      <Button @click="handleCreateEntry" severity="success">
+        <i class="pi pi-plus" />
+        <span>Создать заявку</span>
+      </Button>
     </div>
 
     <!-- Панель фильтров -->
@@ -234,7 +232,9 @@ onMounted(() => {
     <!-- Список заявок -->
     <div v-else-if="filteredEvents.length > 0" class="search-results">
       <div class="results-header">
-        <p>Найдено заявок: <strong>{{ filteredEvents.length }}</strong></p>
+        <p>
+          Найдено заявок: <strong>{{ filteredEvents.length }}</strong>
+        </p>
       </div>
       <div class="search-container">
         <div class="search-container__col" v-for="event in filteredEvents" :key="event.id">
@@ -247,12 +247,10 @@ onMounted(() => {
     <div v-else-if="allEvents.length > 0" class="empty-container">
       <i class="pi pi-search" style="font-size: 3rem; color: var(--surface-400)"></i>
       <p>По заданным фильтрам ничего не найдено</p>
-      <Button
-        label="Сбросить фильтры"
-        @click="resetFilters"
-        severity="secondary"
-        icon="pi pi-filter-slash"
-      />
+      <Button @click="resetFilters" severity="secondary">
+        <i class="pi pi-filter-slash" />
+        <span>Сбросить фильтры</span>
+      </Button>
     </div>
 
     <!-- Пустое состояние без данных -->
