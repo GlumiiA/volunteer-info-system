@@ -1,7 +1,19 @@
 export interface LeaderboardEntry {
-  place: number
-  name: string
-  hours: number
-  rating: number
+  rank: number
+  userId: number
+  fullName: string
+  score: number
+  rating?: number
   avatar?: string
+  isCurrentUser?: boolean
+}
+
+export interface LeaderboardResponse {
+  leaderboard: LeaderboardEntry[]
+  currentUserRank?: {
+    rank: number
+    userId: number
+    fullName: string
+    score: number
+  }
 }

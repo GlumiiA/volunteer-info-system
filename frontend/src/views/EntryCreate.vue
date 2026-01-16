@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import {
   Panel,
@@ -14,10 +14,10 @@ import {
   FileUpload,
   Message,
   Toast,
+  SelectButton,
 } from 'primevue'
 
 const router = useRouter()
-const route = useRoute()
 const toast = useToast()
 
 const API_BASE_URL = 'http://localhost:8080/api/v1'
@@ -27,19 +27,37 @@ const currentUser = ref({
   id: 999,
   name: 'Тестовый Пользователь',
   email: 'test@example.com',
-  role: 'ORG_REPRESENTATIVE', // USER, ORG_REPRESENTATIVE, ADMIN
+  role: 'USER', // USER, ORG_REPRESENTATIVE, ADMIN
   organisationId: 1,
+})
+
+// Для тестирования - переключатель роли
+const roleOptions = ref([
+  { label: 'Пользователь', value: 'USER' },
+  { label: 'Представитель организации', value: 'ORG_REPRESENTATIVE' },
+])
+
+const isOrgRepresentative = computed(() => currentUser.value.role === 'ORG_REPRESENTATIVE')
+
+// Доступные типы заявок в зависимости от роли
+const availableEntryTypes = computed(() => {
+  if (isOrgRepresentative.value) {
+    return [
+      { label: 'От себя (индивидуальная заявка)', value: 'INDIVIDUAL' },
+      { label: 'От организации (корпоративная заявка)', value: 'MASS' },
+    ]
+  }
+  return [{ label: 'От себя (индивидуальная заявка)', value: 'INDIVIDUAL' }]
 })
 
 // Получить название организации по ID
 const getOrganizationName = () => {
-  const org = organizations.value.find((o) => o.value === entryForm.value.organisationId)
-  return org ? org.label : 'Организация'
+  const org = organizations.value.find((o) => o.value === currentUser.value.organisationId)
+  return org ? org.label : 'вашей организации'
 }
 
-// Заглушка данных для редактирования/создания
+// Заглушка данных для создания
 const entryForm = ref({
-  id: null,
   type: 'INDIVIDUAL',
   title: '',
   description: '',
@@ -62,51 +80,14 @@ const organizations = ref([
 
 // Состояние формы
 const isSubmitting = ref(false)
-const isLoading = ref(false)
 const errors = ref({})
 
-// Загрузка данных для редактирования
-const loadEntryData = async () => {
-  isLoading.value = true
-  try {
-    const entryId = route.params.id
-    const entryType = route.query.type || 'individual'
-
-    // Заглушка: GET /events/{type}/{id}
-    // const response = await fetch(`${API_BASE_URL}/events/${entryType}/${entryId}`)
-    // const data = await response.json()
-
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Mock данные для редактирования
-    entryForm.value = {
-      id: parseInt(entryId),
-      type: entryType === 'mass' ? 'MASS' : 'INDIVIDUAL',
-      title: 'Помощь в организации городского марафона',
-      description:
-        'Требуются добровольцы для помощи в организации городского благотворительного марафона.',
-      volunteersRequired: 20,
-      ageRestriction: 18,
-      dateStart: new Date('2026-03-15'),
-      dateEnd: new Date('2026-03-15'),
-      address: 'Центральный парк, г. Санкт-Петербург',
-      workHours: 6,
-      headerImage: null,
-      organisationId: 1,
-    }
-  } catch (err) {
-    console.error('Ошибка загрузки заявки:', err)
-    toast.add({
-      severity: 'error',
-      summary: 'Ошибка',
-      detail: 'Не удалось загрузить данные заявки',
-      life: 3000,
-    })
-    router.push({ name: 'search' })
-  } finally {
-    isLoading.value = false
+// Инициализация при монтировании
+onMounted(() => {
+  if (isOrgRepresentative.value) {
+    entryForm.value.organisationId = currentUser.value.organisationId
   }
-}
+})
 
 const validateForm = () => {
   errors.value = {}
@@ -185,7 +166,7 @@ const handleSubmit = async () => {
   try {
     const endpoint =
       entryForm.value.type === 'MASS' ? `${API_BASE_URL}/events/mass` : `${API_BASE_URL}/events/individual`
-    const url = `${endpoint}/${entryForm.value.id}`
+    const method = 'POST'
 
     // Подготовка данных для отправки
     const requestData = {
@@ -201,11 +182,12 @@ const handleSubmit = async () => {
     if (entryForm.value.type === 'MASS') {
       requestData.address = entryForm.value.address
       requestData.workHours = entryForm.value.workHours
+      // organisationId будет взят из токена авторизации на бэкенде
     }
 
-    // Заглушка: PUT /events/{type}/{id}
-    // const response = await fetch(url, {
-    //   method: 'PUT',
+    // Заглушка: POST /events/{type}
+    // const response = await fetch(endpoint, {
+    //   method,
     //   headers: {
     //     'Content-Type': 'application/json',
     //     'Authorization': `Bearer ${authToken}`,
@@ -217,23 +199,25 @@ const handleSubmit = async () => {
     // Имитация запроса к API
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    console.log('Обновление заявки:', requestData)
+    const mockId = Math.floor(Math.random() * 1000) + 100
+
+    console.log('Создание заявки:', requestData)
 
     toast.add({
       severity: 'success',
       summary: 'Успешно',
-      detail: 'Заявка успешно обновлена',
+      detail: 'Заявка успешно создана',
       life: 3000,
     })
 
-    // Переход к странице просмотра обновленной заявки
-    router.push({ name: 'entry-view', params: { id: entryForm.value.id } })
+    // Переход к странице просмотра созданной заявки
+    router.push({ name: 'entry-view', params: { id: mockId } })
   } catch (err) {
-    console.error('Ошибка сохранения заявки:', err)
+    console.error('Ошибка создания заявки:', err)
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: 'Не удалось сохранить заявку. Попробуйте еще раз.',
+      detail: 'Не удалось создать заявку. Попробуйте еще раз.',
       life: 3000,
     })
   } finally {
@@ -250,46 +234,78 @@ const handleFileUpload = (event) => {
   // Здесь будет логика загрузки изображения на сервер
 }
 
-onMounted(() => {
-  loadEntryData()
-})
+// Смена роли для тестирования
+const handleRoleChange = () => {
+  toast.add({
+    severity: 'info',
+    summary: 'Роль изменена',
+    detail: `Текущая роль: ${currentUser.value.role === 'USER' ? 'Пользователь' : 'Представитель организации'}`,
+    life: 2000,
+  })
 
+  // Сбрасываем тип заявки и специфичные поля при смене роли
+  if (currentUser.value.role === 'USER' && entryForm.value.type === 'MASS') {
+    entryForm.value.type = 'INDIVIDUAL'
+    entryForm.value.organisationId = null
+    entryForm.value.address = ''
+    entryForm.value.workHours = null
+  } else if (currentUser.value.role === 'ORG_REPRESENTATIVE') {
+    // При переключении на ПрОрг автоматически выбираем организацию
+    entryForm.value.organisationId = currentUser.value.organisationId
+  }
+}
 </script>
 
 <template>
   <Toast />
-  <Panel class="entry-edit-panel">
-    <div class="entry-edit-header">
-      <h1>Редактирование заявки</h1>
+  <Panel class="entry-create-panel">
+    <!-- Переключатель роли для тестирования -->
+    <div class="test-role-switcher">
+      <label class="form-label">🧪 Тестирование ролей:</label>
+      <SelectButton
+        v-model="currentUser.role"
+        :options="roleOptions"
+        optionLabel="label"
+        optionValue="value"
+        @change="handleRoleChange"
+      />
     </div>
+
+    <div class="entry-create-header">
+      <h1>Создание заявки</h1>
+      <p v-if="isOrgRepresentative" class="role-badge">
+        <i class="pi pi-building"></i> Представитель организации
+      </p>
       <p v-else class="role-badge">
         <i class="pi pi-user"></i> Пользователь
       </p>
     </div>
 
-    <!-- Индикатор загрузки -->
-    <div v-if="isLoading" class="loading-container">
-      <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      <p>Загрузка данных...</p>
-    </div>
-
-    <Card v-else>
+    <Card>
       <template #content>
         <form @submit.prevent="handleSubmit" class="entry-form">
-          <!-- Информация о типе заявки при редактировании -->
-          <Message v-if="!isNewEntry && entryForm.type === 'MASS'" severity="info" :closable="false">
-            <div class="info-message-content">
-              <i class="pi pi-building"></i>
-              <span>Корпоративная заявка от организации "{{ getOrganizationName() }}"</span>
-            </div>
-          </Message>
-          
-          <Message v-if="!isNewEntry && entryForm.type === 'INDIVIDUAL'" severity="info" :closable="false">
-            <div class="info-message-content">
-              <i class="pi pi-user"></i>
-              <span>Индивидуальная заявка</span>
-            </div>
-          </Message>
+          <!-- Тип заявки -->
+          <div class="form-field">
+            <label for="type" class="form-label">От чьего имени публиковать заявку *</label>
+            <Dropdown
+              id="type"
+              v-model="entryForm.type"
+              :options="availableEntryTypes"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Выберите тип заявки"
+              class="w-full"
+            />
+            <small v-if="entryForm.type === 'INDIVIDUAL'" class="field-hint">
+              Заявка будет опубликована от вашего имени
+            </small>
+            <small v-else-if="entryForm.type === 'MASS' && isOrgRepresentative" class="field-hint">
+              Заявка будет опубликована от имени организации "{{ getOrganizationName() }}"
+            </small>
+            <small v-else-if="!isOrgRepresentative" class="field-hint">
+              Корпоративные заявки доступны только для представителей организаций
+            </small>
+          </div>
 
           <!-- Название -->
           <div class="form-field">
@@ -437,7 +453,7 @@ onMounted(() => {
           <div class="form-actions">
             <Button
               type="submit"
-              label="Обновить заявку"
+              label="Создать заявку"
               icon="pi pi-check"
               :loading="isSubmitting"
               :disabled="isSubmitting"
@@ -458,41 +474,44 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.entry-edit-panel {
+.entry-create-panel {
   max-width: 900px;
   margin: 0 auto;
 }
 
-.entry-edit-header {
+.test-role-switcher {
+  background: #fff3cd;
+  padding: var(--space-m);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--space-l);
+  display: flex;
+  align-items: center;
+  gap: var(--space-m);
+}
+
+.entry-create-header {
   margin-bottom: var(--space-l);
 }
 
-.entry-edit-header h1 {
-  margin: 0;
+.entry-create-header h1 {
+  margin: 0 0 var(--space-s) 0;
   font-family: 'Nunito', sans-serif;
   font-weight: 700;
   font-size: 2rem;
   color: var(--text-color);
 }
 
-.info-message-content {
-  display: flex;
+.role-badge {
+  display: inline-flex;
   align-items: center;
   gap: var(--space-s);
+  padding: var(--space-xs) var(--space-m);
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
   font-family: 'Roboto Flex', sans-serif;
-}
-
-.info-message-content i {
-  font-size: 1.1rem;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-m);
-  padding: var(--space-xl);
-  color: var(--text-color-secondary);
+  margin: 0;
 }
 
 .entry-form {
@@ -548,11 +567,6 @@ onMounted(() => {
 @media (max-width: 768px) {
   .form-row {
     grid-template-columns: 1fr;
-  }
-
-  .test-role-switcher {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 </style>
