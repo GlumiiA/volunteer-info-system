@@ -206,12 +206,13 @@ const submitRequest = async () => {
 
       <div class="form-actions">
         <Button
-          label="Отправить запрос"
-          icon="pi pi-send"
           @click="submitRequest"
           :loading="isSubmitting"
           :disabled="!isFormValid()"
-        />
+        >
+          <i class="pi pi-send" />
+          <span>Отправить запрос</span>
+        </Button>
         <Button
           label="Отмена"
           severity="secondary"

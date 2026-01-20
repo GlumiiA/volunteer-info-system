@@ -118,13 +118,13 @@ const getStatusSeverity = (status) => {
             <span>{{ event.volunteersRequired }} волонтеров</span>
           </div>
           <Button 
-            label="Подробнее" 
             size="small" 
             outlined 
-            icon="pi pi-arrow-right" 
-            iconPos="right"
             @click="handleEventClick(event)"
-          />
+          >
+            <span>Подробнее</span>
+            <i class="pi pi-arrow-right" />
+          </Button>
         </div>
       </div>
     </div>

@@ -105,11 +105,12 @@ const handleReset = () => {
 
       <div class="filter-actions">
         <Button
-          label="Сбросить фильтры"
           @click="handleReset"
           severity="secondary"
-          icon="pi pi-filter-slash"
-        />
+        >
+          <i class="pi pi-filter-slash" />
+          <span>Сбросить фильтры</span>
+        </Button>
       </div>
     </div>
   </Panel>

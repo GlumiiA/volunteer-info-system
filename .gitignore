@@ -1,2 +1,78 @@
-.idea
-.vscode
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+backend/build/
+backend/target/
+backend/.gradle/
+**/.gradle/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# PowerShell scripts (not needed in repository)
+*.ps1
+
+# Test data and temporary SQL files
+backend/insert_test_data.sql
+backend/test_data.sql
+backend/populate_test_data.ps1
+backend/test_api_endpoints.ps1
+
+# Temporary documentation
+README_CLEAN_DATABASE.md
+backend/TEST_RESULTS.md
+backend/TEST_SUMMARY.md
+sql/TODO.md
+sql/fix_admin_password.sql
+
+# OpenAPI generated files (if regenerated)
+backend/src/main/resources/openapi.yaml
+
+# Database dumps
+*.sql.backup
+*.dump
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# Spring Boot
+application-local.properties
+application-dev.properties

@@ -484,19 +484,21 @@ onMounted(async () => {
           <div class="form-actions">
             <Button
               type="submit"
-              label="Обновить заявку"
-              icon="pi pi-check"
               :loading="isSubmitting"
               :disabled="isSubmitting"
-            />
+            >
+              <i class="pi pi-check" />
+              <span>Обновить заявку</span>
+            </Button>
             <Button
               type="button"
-              label="Отмена"
-              icon="pi pi-times"
               severity="secondary"
               outlined
               @click="handleCancel"
-            />
+            >
+              <i class="pi pi-times" />
+              <span>Отмена</span>
+            </Button>
           </div>
         </form>
       </template>

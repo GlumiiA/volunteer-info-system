@@ -199,13 +199,14 @@ const handleOAuth = (provider) => {
           <!-- OAuth кнопки -->
           <div class="oauth-buttons">
             <Button
-              label="Войти через Яндекс"
-              icon="pi pi-yandex"
               @click="handleOAuth('yandex')"
               class="w-full oauth-button"
               severity="secondary"
               outlined
-            />
+            >
+              <i class="pi pi-yandex" />
+              <span>Войти через Яндекс</span>
+            </Button>
           </div>
 
           <!-- Переключение между формами -->

@@ -31,7 +31,25 @@ async function apiRequest(url, options = {}) {
     throw new Error(error.message || `HTTP ${response.status}`)
   }
   
-  return response.json()
+  // Handle empty responses (204 No Content, 200 OK with no body)
+  const contentType = response.headers.get('content-type')
+  if (!contentType || !contentType.includes('application/json')) {
+    // Empty response or non-JSON response
+    return null
+  }
+  
+  // Check if response has content
+  const text = await response.text()
+  if (!text || text.trim() === '') {
+    return null
+  }
+  
+  try {
+    return JSON.parse(text)
+  } catch (e) {
+    // If parsing fails, return null for empty responses
+    return null
+  }
 }
 
 /**
@@ -57,15 +75,21 @@ export async function approveOrganizationRequest(requestId) {
 /**
  * Reject an organization request
  * @param {number} requestId - Request ID
- * @param {string} reason - Optional rejection reason
+ * @param {string} reason - Optional rejection reason (not currently used by backend)
  * @returns {Promise<void>}
  */
 export async function rejectOrganizationRequest(requestId, reason = null) {
-  const body = reason ? { reason } : {}
-  await apiRequest(`/admin/organization-requests/${requestId}/reject`, {
+  // Backend doesn't currently accept a body for reject, but we'll send empty body if no reason
+  const options = {
     method: 'POST',
-    body: JSON.stringify(body),
-  })
+  }
+  
+  // Only send body if reason is provided (though backend may not use it)
+  if (reason) {
+    options.body = JSON.stringify({ reason })
+  }
+  
+  await apiRequest(`/admin/organization-requests/${requestId}/reject`, options)
 }
 
 /**

@@ -102,7 +102,8 @@ const approveRequest = async (requestId) => {
       detail: 'Запрос одобрен',
       life: 3000,
     })
-    await loadOrganizationRequests()
+    // Reload all data to reflect changes
+    await loadData()
   } catch (error) {
     console.error('Error approving request:', error)
     toast.add({
@@ -123,7 +124,8 @@ const rejectRequest = async (requestId) => {
       detail: 'Запрос отклонен',
       life: 3000,
     })
-    await loadOrganizationRequests()
+    // Reload all data to reflect changes
+    await loadData()
   } catch (error) {
     console.error('Error rejecting request:', error)
     toast.add({
@@ -200,7 +202,8 @@ const deleteOrganization = async (orgId) => {
         detail: 'Организация удалена',
         life: 3000,
       })
-      await loadOrganizations()
+      // Reload all data to reflect changes (users might be affected)
+      await loadData()
     } catch (error) {
       console.error('Error deleting organization:', error)
       toast.add({
@@ -367,10 +370,12 @@ const getRoleName = (role) => {
             <div class="table-header">
               <Button
                 label="Добавить организацию"
-                icon="pi pi-plus"
                 @click="openNewOrgDialog"
                 size="small"
-              />
+              >
+                <i class="pi pi-plus" />
+                <span>Добавить организацию</span>
+              </Button>
             </div>
             <DataTable :value="organizations" stripedRows paginator :rows="10" dataKey="id">
               <Column field="id" header="ID" style="width: 5%"></Column>
@@ -381,19 +386,21 @@ const getRoleName = (role) => {
                 <template #body="slotProps">
                   <div class="action-buttons">
                     <Button
-                      icon="pi pi-pencil"
                       severity="info"
                       size="small"
                       @click="openEditOrgDialog(slotProps.data)"
                       v-tooltip="'Редактировать'"
-                    />
+                    >
+                      <i class="pi pi-pencil" />
+                    </Button>
                     <Button
-                      icon="pi pi-trash"
                       severity="danger"
                       size="small"
                       @click="deleteOrganization(slotProps.data.id)"
                       v-tooltip="'Удалить'"
-                    />
+                    >
+                      <i class="pi pi-trash" />
+                    </Button>
                   </div>
                 </template>
               </Column>

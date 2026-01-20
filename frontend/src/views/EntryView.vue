@@ -698,8 +698,6 @@ const getParticipantStatusLabel = (status) => {
           </Button>
           <Button
             v-if="!isAuthor && isParticipant && participantStatus === 'PENDING' && entry.status === 'ACTIVE'"
-            label="Отозвать заявку"
-            icon="pi pi-user-minus"
             @click="handleLeave"
             outlined
           >
@@ -831,22 +829,24 @@ const getParticipantStatusLabel = (status) => {
                           <div class="participant-actions">
                             <Button
                               v-if="request.status === 'PENDING'"
-                              icon="pi pi-check"
                               @click="handleApproveParticipant(request.id)"
                               rounded
                               text
                               severity="success"
                               title="Одобрить"
-                            />
+                            >
+                              <i class="pi pi-check" />
+                            </Button>
                             <Button
                               v-if="request.status === 'PENDING'"
-                              icon="pi pi-times"
                               @click="handleRejectParticipant(request.id)"
                               rounded
                               text
                               severity="danger"
                               title="Отклонить"
-                            />
+                            >
+                              <i class="pi pi-times" />
+                            </Button>
                           </div>
                         </div>
                       </template>
@@ -877,8 +877,14 @@ const getParticipantStatusLabel = (status) => {
         </p>
       </div>
       <template #footer>
-        <Button label="Отмена" icon="pi pi-times" @click="cancelDelete" text />
-        <Button label="Удалить" icon="pi pi-trash" @click="handleDelete" severity="danger" />
+        <Button @click="cancelDelete" text>
+          <i class="pi pi-times" />
+          <span>Отмена</span>
+        </Button>
+        <Button @click="handleDelete" severity="danger">
+          <i class="pi pi-trash" />
+          <span>Удалить</span>
+        </Button>
       </template>
     </Dialog>
   </Panel>

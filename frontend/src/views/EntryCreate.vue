@@ -421,19 +421,21 @@ const handleFileUpload = (event) => {
           <div class="form-actions">
             <Button
               type="submit"
-              label="Создать заявку"
-              icon="pi pi-check"
               :loading="isSubmitting"
               :disabled="isSubmitting"
-            />
+            >
+              <i class="pi pi-check" />
+              <span>Создать заявку</span>
+            </Button>
             <Button
               type="button"
-              label="Отмена"
-              icon="pi pi-times"
               severity="secondary"
               outlined
               @click="handleCancel"
-            />
+            >
+              <i class="pi pi-times" />
+              <span>Отмена</span>
+            </Button>
           </div>
         </form>
       </template>
