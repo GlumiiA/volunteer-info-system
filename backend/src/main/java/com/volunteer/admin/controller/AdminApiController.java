@@ -161,6 +161,21 @@ public class AdminApiController implements AdminApi {
         }
     }
 
+    @GetMapping("/admin/users")
+    public ResponseEntity<List<User>> adminUsersGet() {
+        try {
+            List<User> users = adminService.getAllUsers();
+            return ResponseEntity.ok(users);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("administrators")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            throw new RuntimeException(e);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @PutMapping("/admin/users/{userId}/role")
     public ResponseEntity<User> adminUsersUserIdRolePut(
             @PathVariable("userId") @NotNull Integer userId,

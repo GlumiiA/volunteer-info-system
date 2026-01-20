@@ -119,6 +119,11 @@ public class AdminService {
         organizationRepository.delete(organization);
     }
 
+    public List<User> getAllUsers() {
+        checkAdminRole();
+        return userRepository.findAll();
+    }
+
     public List<OrganizationRoleRequestItem> getOrganizationRequests(String status) {
         checkAdminRole();
         

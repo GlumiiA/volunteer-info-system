@@ -12,13 +12,17 @@ import {
   Textarea,
 } from 'primevue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from 'primevue/usetoast'
+import * as adminService from '@/services/admin'
 
 const { user } = useAuth()
+const toast = useToast()
 
-// Заглушки для данных
+// Данные
 const organizationRequests = ref([])
 const organizations = ref([])
 const users = ref([])
+const loading = ref(false)
 
 // Диалоги
 const showOrgDialog = ref(false)
@@ -30,93 +34,105 @@ const newOrg = ref({
   address: '',
 })
 
-// Загрузка данных (заглушки)
-onMounted(async () => {
-  // Мок-данные для запросов на статус ПрОрг
-  organizationRequests.value = [
-    {
-      id: 1,
-      userId: 3,
-      user: {
-        id: 3,
-        name: 'Иван Петров',
-        email: 'ivan@example.com',
-      },
-      requestType: 'EXISTING',
-      organizationId: 1,
-      organizationName: 'Красный Крест',
-      status: 'PENDING',
-      createdAt: new Date('2026-01-10'),
-    },
-    {
-      id: 2,
-      userId: 4,
-      user: {
-        id: 4,
-        name: 'Мария Иванова',
-        email: 'maria@example.com',
-      },
-      requestType: 'NEW',
-      organizationName: 'Помощь животным',
-      organizationDescription: 'Организация по защите бездомных животных',
-      organizationAddress: 'ул. Ленина, 25',
-      status: 'PENDING',
-      createdAt: new Date('2026-01-12'),
-    },
-  ]
+// Загрузка данных
+const loadData = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      loadOrganizationRequests(),
+      loadOrganizations(),
+      loadUsers(),
+    ])
+  } catch (error) {
+    console.error('Error loading admin data:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось загрузить данные',
+      life: 3000,
+    })
+  } finally {
+    loading.value = false
+  }
+}
 
-  // Мок-данные для организаций
-  organizations.value = [
-    {
-      id: 1,
-      name: 'Красный Крест',
-      description: 'Международная организация помощи',
-      address: 'Невский проспект, 100',
-    },
-    {
-      id: 2,
-      name: 'Волонтеры Победы',
-      description: 'Патриотическое волонтерское движение',
-      address: 'ул. Маршала Жукова, 15',
-    },
-  ]
+const loadOrganizationRequests = async () => {
+  try {
+    organizationRequests.value = await adminService.getOrganizationRequests('ALL')
+    // Convert createdAt string to Date if needed
+    organizationRequests.value = organizationRequests.value.map(req => ({
+      ...req,
+      createdAt: req.createdAt ? new Date(req.createdAt) : null,
+    }))
+  } catch (error) {
+    console.error('Error loading organization requests:', error)
+    throw error
+  }
+}
 
-  // Мок-данные для пользователей
-  users.value = [
-    {
-      id: 1,
-      name: 'Тестовый Пользователь',
-      email: 'test@example.com',
-      role: 'USER',
-      organisationId: null,
-    },
-    {
-      id: 2,
-      name: 'Представитель Организации',
-      email: 'org@example.com',
-      role: 'ORG_REPRESENTATIVE',
-      organisationId: 1,
-    },
-  ]
+const loadOrganizations = async () => {
+  try {
+    organizations.value = await adminService.getOrganizations()
+  } catch (error) {
+    console.error('Error loading organizations:', error)
+    throw error
+  }
+}
+
+const loadUsers = async () => {
+  try {
+    users.value = await adminService.getUsers()
+  } catch (error) {
+    console.error('Error loading users:', error)
+    throw error
+  }
+}
+
+onMounted(() => {
+  loadData()
 })
 
 // Обработчики запросов на статус ПрОрг
 const approveRequest = async (requestId) => {
-  console.log('Одобрение запроса:', requestId)
-  const request = organizationRequests.value.find((r) => r.id === requestId)
-  if (request) {
-    request.status = 'APPROVED'
+  try {
+    await adminService.approveOrganizationRequest(requestId)
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Запрос одобрен',
+      life: 3000,
+    })
+    await loadOrganizationRequests()
+  } catch (error) {
+    console.error('Error approving request:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось одобрить запрос',
+      life: 3000,
+    })
   }
-  // TODO: Реальный API вызов
 }
 
 const rejectRequest = async (requestId) => {
-  console.log('Отклонение запроса:', requestId)
-  const request = organizationRequests.value.find((r) => r.id === requestId)
-  if (request) {
-    request.status = 'REJECTED'
+  try {
+    await adminService.rejectOrganizationRequest(requestId)
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Запрос отклонен',
+      life: 3000,
+    })
+    await loadOrganizationRequests()
+  } catch (error) {
+    console.error('Error rejecting request:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось отклонить запрос',
+      life: 3000,
+    })
   }
-  // TODO: Реальный API вызов
 }
 
 // Управление организациями
@@ -131,49 +147,118 @@ const openEditOrgDialog = (org) => {
 }
 
 const createOrganization = async () => {
-  console.log('Создание организации:', newOrg.value)
-  organizations.value.push({
-    id: organizations.value.length + 1,
-    ...newOrg.value,
-  })
-  showOrgDialog.value = false
-  // TODO: Реальный API вызов
+  try {
+    const org = await adminService.createOrganization(newOrg.value)
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Организация создана',
+      life: 3000,
+    })
+    showOrgDialog.value = false
+    await loadOrganizations()
+  } catch (error) {
+    console.error('Error creating organization:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось создать организацию',
+      life: 3000,
+    })
+  }
 }
 
 const updateOrganization = async () => {
-  console.log('Обновление организации:', selectedOrg.value)
-  const index = organizations.value.findIndex((o) => o.id === selectedOrg.value.id)
-  if (index !== -1) {
-    organizations.value[index] = { ...selectedOrg.value }
+  try {
+    await adminService.updateOrganization(selectedOrg.value.id, selectedOrg.value)
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Организация обновлена',
+      life: 3000,
+    })
+    showEditOrgDialog.value = false
+    await loadOrganizations()
+  } catch (error) {
+    console.error('Error updating organization:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось обновить организацию',
+      life: 3000,
+    })
   }
-  showEditOrgDialog.value = false
-  // TODO: Реальный API вызов
 }
 
 const deleteOrganization = async (orgId) => {
   if (confirm('Вы уверены, что хотите удалить эту организацию?')) {
-    console.log('Удаление организации:', orgId)
-    organizations.value = organizations.value.filter((o) => o.id !== orgId)
-    // TODO: Реальный API вызов
+    try {
+      await adminService.deleteOrganization(orgId)
+      toast.add({
+        severity: 'success',
+        summary: 'Успешно',
+        detail: 'Организация удалена',
+        life: 3000,
+      })
+      await loadOrganizations()
+    } catch (error) {
+      console.error('Error deleting organization:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: error.message || 'Не удалось удалить организацию',
+        life: 3000,
+      })
+    }
   }
 }
 
 // Управление ролями пользователей
 const changeUserRole = async (userId, newRole) => {
-  console.log('Изменение роли пользователя:', userId, newRole)
-  const userObj = users.value.find((u) => u.id === userId)
-  if (userObj) {
-    userObj.role = newRole
+  try {
+    // For ORG_REPRESENTATIVE role, organization ID is required
+    // For now, we'll show an error if trying to set ORG_REPRESENTATIVE without organization
+    // Users should use the organization request approval flow instead
+    if (newRole === 'ORG_REPRESENTATIVE') {
+      toast.add({
+        severity: 'warn',
+        summary: 'Предупреждение',
+        detail: 'Для назначения представителя организации используйте одобрение запроса на статус ПрОрг',
+        life: 5000,
+      })
+      return
+    }
+    
+    // For USER role, no organization ID needed
+    await adminService.updateUserRole(userId, newRole, null)
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Роль пользователя изменена',
+      life: 3000,
+    })
+    await loadUsers()
+  } catch (error) {
+    console.error('Error changing user role:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось изменить роль пользователя',
+      life: 3000,
+    })
   }
-  // TODO: Реальный API вызов
 }
 
 const getRequestTypeName = (type) => {
-  return type === 'EXISTING' ? 'Существующая организация' : 'Новая организация'
+  if (!type) return 'Неизвестно'
+  const typeStr = typeof type === 'string' ? type : type.toString()
+  return typeStr === 'EXISTING' ? 'Существующая организация' : 'Новая организация'
 }
 
 const getStatusSeverity = (status) => {
-  switch (status) {
+  if (!status) return 'info'
+  const statusStr = typeof status === 'string' ? status : status.toString()
+  switch (statusStr) {
     case 'PENDING':
       return 'warning'
     case 'APPROVED':
@@ -186,7 +271,9 @@ const getStatusSeverity = (status) => {
 }
 
 const getStatusName = (status) => {
-  switch (status) {
+  if (!status) return 'Неизвестно'
+  const statusStr = typeof status === 'string' ? status : status.toString()
+  switch (statusStr) {
     case 'PENDING':
       return 'Ожидает'
     case 'APPROVED':
@@ -194,7 +281,7 @@ const getStatusName = (status) => {
     case 'REJECTED':
       return 'Отклонено'
     default:
-      return status
+      return statusStr
   }
 }
 
@@ -235,7 +322,11 @@ const getRoleName = (role) => {
                   {{ getRequestTypeName(slotProps.data.requestType) }}
                 </template>
               </Column>
-              <Column field="organizationName" header="Организация"></Column>
+              <Column header="Организация">
+                <template #body="slotProps">
+                  {{ slotProps.data.organizationName || 'Не указано' }}
+                </template>
+              </Column>
               <Column header="Статус">
                 <template #body="slotProps">
                   <Button
@@ -325,15 +416,8 @@ const getRoleName = (role) => {
                 <template #body="slotProps">
                   <div class="action-buttons">
                     <Button
-                      v-if="slotProps.data.role !== 'ORG_REPRESENTATIVE'"
-                      label="→ ПрОрг"
-                      severity="info"
-                      size="small"
-                      @click="changeUserRole(slotProps.data.id, 'ORG_REPRESENTATIVE')"
-                    />
-                    <Button
-                      v-if="slotProps.data.role !== 'USER'"
-                      label="→ АП"
+                      v-if="slotProps.data.role !== 'USER' && slotProps.data.role !== 'ADMIN'"
+                      label="→ Пользователь"
                       severity="secondary"
                       size="small"
                       @click="changeUserRole(slotProps.data.id, 'USER')"

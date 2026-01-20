@@ -2,38 +2,11 @@
 
 ## Default Admin Account
 
-### Quick Setup (Recommended)
+### Automatic Creation
 
-Run the setup script:
-```powershell
-.\setup_admin.ps1
-```
+The admin account is **automatically created** when the backend application starts for the first time.
 
-This will:
-1. Register the admin user via API (or login if exists)
-2. Update the user's role to ADMIN
-3. Verify the account is ready
-
-### Manual Setup
-
-If the script doesn't work, you can set up manually:
-
-1. **Register the user via API:**
-   ```powershell
-   # Make sure backend is running
-   $body = @{
-       email = "admin@volunteer-system.local"
-       password = "admin123"
-       fullName = "Администратор"
-   } | ConvertTo-Json
-   
-   Invoke-RestMethod -Uri "http://localhost:8080/api/v1/auth/register" -Method Post -Body $body -ContentType "application/json"
-   ```
-
-2. **Update role to ADMIN via SQL:**
-   ```sql
-   UPDATE users SET role = 'ADMIN' WHERE email = 'admin@volunteer-system.local';
-   ```
+The `AdminUserInitializer` component runs after the database is initialized and creates the admin user if it doesn't already exist.
 
 ### Admin Credentials
 
@@ -42,7 +15,36 @@ If the script doesn't work, you can set up manually:
 - **Username**: `Администратор`
 - **Role**: `ADMIN`
 
-**Note**: The admin user is created via the setup script, which ensures the password hash is generated correctly by the backend API. This is more reliable than using a pre-generated hash in the database.
+### How It Works
+
+1. On application startup, `AdminUserInitializer` checks if an admin user exists
+2. If not found, it creates a new admin user with:
+   - Properly hashed password using BCryptPasswordEncoder
+   - ADMIN role
+   - Default rating of 5.0
+3. The admin user is ready to use immediately after the first startup
+
+### Manual Setup (Alternative)
+
+If you need to create the admin manually, you can use the setup script:
+```powershell
+.\setup_admin.ps1
+```
+
+Or register via API and update role:
+```powershell
+# Register
+$body = @{
+    email = "admin@volunteer-system.local"
+    password = "admin123"
+    fullName = "Администратор"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8080/api/v1/auth/register" -Method Post -Body $body -ContentType "application/json"
+
+# Update role to ADMIN via SQL
+UPDATE users SET role = 'ADMIN' WHERE email = 'admin@volunteer-system.local';
+```
 
 ## Important Security Notes
 

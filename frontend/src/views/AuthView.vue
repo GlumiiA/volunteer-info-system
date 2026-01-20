@@ -199,14 +199,6 @@ const handleOAuth = (provider) => {
           <!-- OAuth кнопки -->
           <div class="oauth-buttons">
             <Button
-              label="Войти через VK"
-              icon="pi pi-vk"
-              @click="handleOAuth('vk')"
-              class="w-full oauth-button"
-              severity="secondary"
-              outlined
-            />
-            <Button
               label="Войти через Яндекс"
               icon="pi pi-yandex"
               @click="handleOAuth('yandex')"

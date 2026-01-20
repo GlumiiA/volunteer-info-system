@@ -61,28 +61,31 @@ public class OAuthService {
         // Generate state for CSRF protection
         String state = generateState();
         OAuthState oauthState = new OAuthState();
+        // Store frontend redirect URI for final redirect after OAuth processing
         oauthState.setRedirectUri(redirectUri);
         oauthState.setProvider(provider);
         stateStore.put(state, oauthState);
 
         String authUrl = config.getAuthorizationUri();
-        String encodedRedirectUri = URLEncoder.encode(redirectUri, StandardCharsets.UTF_8);
+        // Use backend callback URL when talking to OAuth provider (must match registered redirect_uri)
+        String backendRedirectUri = config.getRedirectUri();
         String encodedState = URLEncoder.encode(state, StandardCharsets.UTF_8);
 
         if (provider.equals("vk")) {
             // VK OAuth parameters
             return UriComponentsBuilder.fromHttpUrl(authUrl)
                     .queryParam("client_id", clientId)
-                    .queryParam("redirect_uri", redirectUri)
+                    .queryParam("redirect_uri", backendRedirectUri)
                     .queryParam("response_type", "code")
                     .queryParam("scope", "email")
                     .queryParam("state", state)
                     .build().toUriString();
         } else if (provider.equals("yandex")) {
             // Yandex OAuth parameters
+            // Use backend callback URL - must match the redirect_uri registered in Yandex OAuth app settings
             return UriComponentsBuilder.fromHttpUrl(authUrl)
                     .queryParam("client_id", clientId)
-                    .queryParam("redirect_uri", redirectUri)
+                    .queryParam("redirect_uri", backendRedirectUri)
                     .queryParam("response_type", "code")
                     .queryParam("state", state)
                     .build().toUriString();
@@ -162,7 +165,8 @@ public class OAuthService {
 
         String userInfoUrl = config.getUserInfoUri();
         if (provider.equals("vk")) {
-            userInfoUrl += "?access_token=" + accessToken + "&fields=email,screen_name";
+            // Request photo fields for avatar
+            userInfoUrl += "?access_token=" + accessToken + "&fields=email,screen_name,photo_200,photo_400_orig";
         }
 
         ResponseEntity<String> response = restTemplate.exchange(
@@ -181,12 +185,34 @@ public class OAuthService {
                     userInfo.setName(userNode.has("first_name") && userNode.has("last_name") 
                             ? userNode.get("first_name").asText() + " " + userNode.get("last_name").asText()
                             : userNode.has("screen_name") ? userNode.get("screen_name").asText() : "VK User");
+                    
+                    // Extract avatar URL from VK response
+                    // Prefer photo_400_orig (higher quality), fallback to photo_200
+                    String avatarUrl = null;
+                    if (userNode.has("photo_400_orig") && !userNode.get("photo_400_orig").isNull()) {
+                        avatarUrl = userNode.get("photo_400_orig").asText();
+                    } else if (userNode.has("photo_200") && !userNode.get("photo_200").isNull()) {
+                        avatarUrl = userNode.get("photo_200").asText();
+                    }
+                    userInfo.setAvatarUrl(avatarUrl);
                 }
             } else if (provider.equals("yandex")) {
                 userInfo.setId(json.get("id").asText());
                 userInfo.setEmail(json.has("default_email") ? json.get("default_email").asText() : null);
                 userInfo.setName(json.has("display_name") ? json.get("display_name").asText() 
                         : json.has("first_name") ? json.get("first_name").asText() : "Yandex User");
+                
+                // Extract avatar URL from Yandex response
+                // Yandex provides default_avatar_id and is_avatar_empty
+                String avatarUrl = null;
+                boolean isAvatarEmpty = json.has("is_avatar_empty") && json.get("is_avatar_empty").asBoolean();
+                if (!isAvatarEmpty && json.has("default_avatar_id") && !json.get("default_avatar_id").isNull()) {
+                    String avatarId = json.get("default_avatar_id").asText();
+                    // Build Yandex avatar URL: https://avatars.yandex.net/get-yapic/<avatar_id>/<size>
+                    // Using islands-200 for a good balance of quality and size
+                    avatarUrl = "https://avatars.yandex.net/get-yapic/" + avatarId + "/islands-200";
+                }
+                userInfo.setAvatarUrl(avatarUrl);
             }
 
             return userInfo;
@@ -196,16 +222,31 @@ public class OAuthService {
     }
 
     private User findOrCreateUser(String provider, UserInfo userInfo) {
+        User user;
+        
         // Try to find user by email first
         if (userInfo.getEmail() != null) {
-            return userRepository.findByEmail(userInfo.getEmail())
+            user = userRepository.findByEmail(userInfo.getEmail())
+                    .orElseGet(() -> createOAuthUser(provider, userInfo));
+        } else {
+            // If no email, try to find by provider ID in username
+            String providerUsername = provider + "_" + userInfo.getId();
+            user = userRepository.findByUsername(providerUsername)
                     .orElseGet(() -> createOAuthUser(provider, userInfo));
         }
-
-        // If no email, try to find by provider ID in username
-        String providerUsername = provider + "_" + userInfo.getId();
-        return userRepository.findByUsername(providerUsername)
-                .orElseGet(() -> createOAuthUser(provider, userInfo));
+        
+        // Update avatar URL if user exists and doesn't have one, or always update from OAuth
+        // Option: Only update if user doesn't have an avatar, or always sync from OAuth
+        // For now, we'll update if the user doesn't have an avatar or if OAuth provides one
+        if (userInfo.getAvatarUrl() != null && !userInfo.getAvatarUrl().isEmpty()) {
+            // Update avatar if user doesn't have one, or always sync from OAuth provider
+            if (user.getAvatarUrl() == null || user.getAvatarUrl().isEmpty()) {
+                user.setAvatarUrl(userInfo.getAvatarUrl());
+                userRepository.save(user);
+            }
+        }
+        
+        return user;
     }
 
     private User createOAuthUser(String provider, UserInfo userInfo) {
@@ -218,6 +259,11 @@ public class OAuthService {
             user.setUsername(provider + "_" + userInfo.getId());
         } else {
             user.setUsername(userInfo.getName());
+        }
+        
+        // Set avatar URL from OAuth provider if available
+        if (userInfo.getAvatarUrl() != null && !userInfo.getAvatarUrl().isEmpty()) {
+            user.setAvatarUrl(userInfo.getAvatarUrl());
         }
         
         // Generate a random password hash (OAuth users don't need password, but field is required)
@@ -237,6 +283,7 @@ public class OAuthService {
         private String id;
         private String email;
         private String name;
+        private String avatarUrl;
 
         public String getId() {
             return id;
@@ -260,6 +307,14 @@ public class OAuthService {
 
         public void setName(String name) {
             this.name = name;
+        }
+
+        public String getAvatarUrl() {
+            return avatarUrl;
+        }
+
+        public void setAvatarUrl(String avatarUrl) {
+            this.avatarUrl = avatarUrl;
         }
     }
 
