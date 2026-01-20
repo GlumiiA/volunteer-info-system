@@ -54,6 +54,9 @@ public class User {
   @Column(name = "password_hash_bcrypt", nullable = false)
   private String passwordHash;
 
+  @Column(name = "avatar_url", columnDefinition = "TEXT")
+  private String avatarUrl;
+
   // Map to OpenAPI name field
   public String getName() {
     return username;

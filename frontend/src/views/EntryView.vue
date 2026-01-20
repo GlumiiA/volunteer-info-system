@@ -16,6 +16,7 @@ import {
 import { useToast } from 'primevue'
 import { useAuth } from '@/composables/useAuth'
 import * as eventsService from '@/services/events'
+import * as userService from '@/services/user'
 import cogImage from '@/assets/images/cog.png'
 import pawImage from '@/assets/images/paw.png'
 
@@ -90,21 +91,37 @@ const loadOrganization = async (organizationId) => {
   }
 }
 
-// Load participants (for event authors)
+// Load participants (for event authors and to check current user status)
 const loadParticipants = async () => {
-  if (!isAuthor.value || !entry.value.id || !entryType.value) return
+  if (!entry.value.id || !entryType.value) return
   try {
     const result = await eventsService.getEventParticipants(entryType.value.toLowerCase(), entry.value.id)
-    if (result && result.participants) {
-      participants.value = result.participants.map((p) => ({
-        id: p.id,
-        name: p.name || p.fullName || 'Неизвестный пользователь',
-        avatar: p.avatar,
-        status: 'APPROVED',
-      }))
+    if (result) {
+      // Always update count from API response
+      if (result.totalCount !== undefined) {
+        entry.value.volunteersRegistered = result.totalCount
+      }
+      
+      // Load participant list if available
+      if (result.participants) {
+        participants.value = result.participants.map((p) => ({
+          id: p.id,
+          name: p.name || p.fullName || 'Неизвестный пользователь',
+          avatar: p.avatar || p.avatarUrl,
+          status: 'APPROVED',
+        }))
+      } else {
+        participants.value = []
+      }
     }
   } catch (error) {
-    console.error('Failed to load participants:', error)
+    // If user doesn't have permission (not author), participants list will be empty
+    // This is expected for non-authors, but we still try to get the count
+    if (isAuthor.value) {
+      console.error('Failed to load participants:', error)
+    }
+    participants.value = []
+    // Don't reset count on error - keep previous value
   }
 }
 
@@ -142,12 +159,23 @@ const loadRequests = async () => {
 
 // Check if current user is participant
 const checkParticipantStatus = async () => {
-  if (!isAuthenticated.value || !entry.value.id || !entryType.value) {
+  if (!isAuthenticated.value || !entry.value.id || !entryType.value || !user.value) {
     isParticipant.value = false
+    participantStatus.value = null
     return
   }
 
   try {
+    // First check if user is in the participants list (for approved participants)
+    if (participants.value && participants.value.length > 0) {
+      const userParticipant = participants.value.find((p) => p.id === user.value.id)
+      if (userParticipant) {
+        isParticipant.value = true
+        participantStatus.value = userParticipant.status || 'APPROVED'
+        return
+      }
+    }
+
     // Check if user has a request/participation for this event
     const requestsData = await eventsService.getEventRequests(entryType.value.toLowerCase(), entry.value.id)
     if (requestsData && Array.isArray(requestsData)) {
@@ -155,11 +183,18 @@ const checkParticipantStatus = async () => {
       if (userRequest) {
         isParticipant.value = true
         participantStatus.value = userRequest.status
+        return
       }
     }
+
+    // User is not a participant
+    isParticipant.value = false
+    participantStatus.value = null
   } catch (error) {
     // If user doesn't have permission, they're not a participant
+    console.error('Error checking participant status:', error)
     isParticipant.value = false
+    participantStatus.value = null
   }
 }
 
@@ -216,12 +251,31 @@ const loadEntryData = async () => {
                          user.value.organisationId === eventData.organisationId
       }
 
+      // Load organization representative as author for mass events
+      if (eventData.organisationId && organization.value) {
+        // For mass events, author is the organization
+        author.value = {
+          id: organization.value.id,
+          name: organization.value.name || 'Организация',
+          avatar: null,
+        }
+      } else if (isAuthenticated.value && user.value && user.value.organisationId === eventData.organisationId) {
+        // Fallback: use current user if they're the org rep
+        author.value = {
+          id: user.value.id,
+          name: user.value.name || user.value.username || 'Организатор',
+          avatar: user.value.avatarUrl || null,
+        }
+      }
+
       // Load participants and requests if user is author
       if (isAuthor.value) {
         await Promise.all([loadParticipants(), loadRequests()])
-        // Update volunteers registered count
-        entry.value.volunteersRegistered = participants.value.length
+        // Count is updated in loadParticipants from API response
       } else {
+        // For non-authors, also load participants to check if current user is approved
+        // This will also update the count from API
+        await loadParticipants()
         // Check if user is participant
         await checkParticipantStatus()
       }
@@ -267,20 +321,32 @@ const loadEntryData = async () => {
         // Load participants and requests if user is author
         if (isAuthor.value) {
           await Promise.all([loadParticipants(), loadRequests()])
-          entry.value.volunteersRegistered = participants.value.length
+          // Count is updated in loadParticipants from API response
         } else {
+          // For non-authors, also load participants to check if current user is approved
+          // This will also update the count from API
+          await loadParticipants()
           // Check if user is participant
           await checkParticipantStatus()
         }
 
         // Try to get author info (for individual events, author is the creator)
         if (eventData.creatorUserId) {
-          // TODO: Fetch user info by ID from /api/v1/users/{id}
-          // For now, just show creator ID
-          author.value = {
-            id: eventData.creatorUserId,
-            name: `Пользователь #${eventData.creatorUserId}`,
-            avatar: null,
+          try {
+            const authorUser = await userService.getUserById(eventData.creatorUserId)
+            author.value = {
+              id: authorUser.id,
+              name: authorUser.name || authorUser.username || `Пользователь #${eventData.creatorUserId}`,
+              avatar: authorUser.avatarUrl || null,
+            }
+          } catch (error) {
+            console.error('Failed to load author info:', error)
+            // Fallback to showing ID
+            author.value = {
+              id: eventData.creatorUserId,
+              name: `Пользователь #${eventData.creatorUserId}`,
+              avatar: null,
+            }
           }
         }
       } else {
@@ -339,7 +405,7 @@ const handleJoin = async () => {
     // Reload requests to show the new request
     if (isAuthor.value) {
       await loadRequests()
-      entry.value.volunteersRegistered = participants.value.length
+      // Count will be updated when participants are reloaded
     }
 
     toast.add({
@@ -438,7 +504,7 @@ const handleApproveParticipant = async (requestId) => {
 
     // Reload requests and participants
     await Promise.all([loadRequests(), loadParticipants()])
-    entry.value.volunteersRegistered = participants.value.filter((p) => p.status === 'APPROVED').length
+    // Count is updated in loadParticipants from API response
 
     toast.add({
       severity: 'success',
@@ -446,6 +512,11 @@ const handleApproveParticipant = async (requestId) => {
       detail: 'Заявка на участие успешно одобрена.',
       life: 3000,
     })
+    
+    // If current user is not the author, re-check their participant status
+    if (!isAuthor.value) {
+      await checkParticipantStatus()
+    }
   } catch (error) {
     console.error('Ошибка при одобрении заявки:', error)
     toast.add({
@@ -476,8 +547,9 @@ const handleRejectParticipant = async (requestId) => {
       throw new Error(errorText || `Failed to reject: ${response.statusText}`)
     }
 
-    // Reload requests
-    await loadRequests()
+    // Reload requests and participants
+    await Promise.all([loadRequests(), loadParticipants()])
+    // Count is updated in loadParticipants from API response
 
     toast.add({
       severity: 'info',
@@ -485,6 +557,11 @@ const handleRejectParticipant = async (requestId) => {
       detail: 'Заявка на участие отклонена.',
       life: 3000,
     })
+    
+    // If current user is not the author, re-check their participant status
+    if (!isAuthor.value) {
+      await checkParticipantStatus()
+    }
   } catch (error) {
     console.error('Ошибка при отклонении заявки:', error)
     toast.add({
@@ -620,7 +697,7 @@ const getParticipantStatusLabel = (status) => {
             <span>Подать заявку</span>
           </Button>
           <Button
-            v-if="!isAuthor && isParticipant && entry.status === 'ACTIVE'"
+            v-if="!isAuthor && isParticipant && participantStatus === 'PENDING' && entry.status === 'ACTIVE'"
             label="Отозвать заявку"
             icon="pi pi-user-minus"
             @click="handleLeave"
@@ -629,6 +706,16 @@ const getParticipantStatusLabel = (status) => {
             <i class="pi pi-user-minus" />
             <span>Отозвать заявку</span>
           </Button>
+          <Tag
+            v-if="!isAuthor && isParticipant && participantStatus === 'APPROVED'"
+            severity="success"
+            value="Вы участвуете"
+          />
+          <Tag
+            v-if="!isAuthor && isParticipant && participantStatus === 'REJECTED'"
+            severity="danger"
+            value="Заявка отклонена"
+          />
         </div>
       </div>
 

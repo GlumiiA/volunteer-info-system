@@ -1,6 +1,6 @@
 <script setup>
 import { Button, DatePicker, InputText, Rating, Textarea } from 'primevue'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useToast } from 'primevue'
 import OrganizationRequestForm from './OrganizationRequestForm.vue'
@@ -20,6 +20,34 @@ const isSaving = ref(false)
 
 // Store original values to restore on cancel
 const originalUserData = ref(null)
+
+// Convert birthday string to Date object for DatePicker
+const birthdayDate = computed({
+  get: () => {
+    if (!userData.value?.birthday) {
+      return null
+    }
+    // If it's already a Date object, return it
+    if (userData.value.birthday instanceof Date) {
+      return userData.value.birthday
+    }
+    // If it's a string, parse it
+    if (typeof userData.value.birthday === 'string') {
+      const date = new Date(userData.value.birthday)
+      // Check if date is valid
+      if (!isNaN(date.getTime())) {
+        return date
+      }
+    }
+    return null
+  },
+  set: (value) => {
+    if (userData.value) {
+      // Store as Date object in userData
+      userData.value.birthday = value
+    }
+  }
+})
 
 // Определяем роль на основе userData, а не глобального user
 const isOrgRepresentative = computed(() => userData.value?.role === 'ORG_REPRESENTATIVE')
@@ -81,10 +109,11 @@ const saveProfile = async () => {
 const handleRequestSubmitted = () => {
   // Refresh user data after request submission
   refreshUser().then(() => {
-    if (user.value) {
+    if (user.value && userData.value) {
       Object.assign(userData.value, user.value)
     }
   })
+  showOrgRequestDialog.value = false
 }
 </script>
 
@@ -116,11 +145,13 @@ const handleRequestSubmitted = () => {
             День рождения
           </label>
           <DatePicker
-            v-model="userData.birthday"
+            v-model="birthdayDate"
             placeholder="Выберите дату"
             :readonly="!isEditing"
             class="field-input"
             dateFormat="dd.mm.yy"
+            showIcon
+            inputId="birthday"
           />
         </div>
 

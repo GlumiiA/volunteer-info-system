@@ -261,22 +261,29 @@ public class EventService {
         User user = currentUserService.getCurrentUser();
         MassEvent event = getMassEvent(eventId);
 
-        if (user.getRole() != UserRole.ADMIN && 
-            (user.getRole() != UserRole.ORG_REPRESENTATIVE || !event.getOrganisationId().equals(user.getOrganisationId()))) {
-            throw new RuntimeException("Only admins or organization representatives can view participants");
-        }
+        boolean isAuthorized = user.getRole() == UserRole.ADMIN || 
+                              (user.getRole() == UserRole.ORG_REPRESENTATIVE && 
+                               event.getOrganisationId() != null && 
+                               event.getOrganisationId().equals(user.getOrganisationId()));
 
         List<Participation> participations = participationRepository.findByEventIdAndEventTypeAndStatus(
                 eventId, Participation.EventType.MASS, Participation.ParticipationStatus.ACCEPTED);
         
-        List<User> participants = participations.stream()
-                .map(p -> userRepository.findById(p.getUserId()).orElse(null))
-                .filter(u -> u != null)
-                .collect(Collectors.toList());
+        List<User> participants;
+        if (isAuthorized) {
+            // Authorized users get full participant list
+            participants = participations.stream()
+                    .map(p -> userRepository.findById(p.getUserId()).orElse(null))
+                    .filter(u -> u != null)
+                    .collect(Collectors.toList());
+        } else {
+            // Non-authorized users get empty list but correct count
+            participants = new java.util.ArrayList<>();
+        }
 
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("participants", participants);
-        result.put("totalCount", participants.size());
+        result.put("totalCount", participations.size());
         return result;
     }
 
@@ -292,21 +299,26 @@ public class EventService {
                                    user.getOrganisationId() != null && 
                                    eventOrgId.equals(user.getOrganisationId());
         
-        if (!isCreator && !isOrgRepForEvent) {
-            throw new RuntimeException("Only the event creator can view participants");
-        }
+        boolean isAuthorized = isCreator || isOrgRepForEvent;
 
         List<Participation> participations = participationRepository.findByEventIdAndEventTypeAndStatus(
                 eventId, Participation.EventType.INDIVIDUAL, Participation.ParticipationStatus.ACCEPTED);
         
-        List<User> participants = participations.stream()
-                .map(p -> userRepository.findById(p.getUserId()).orElse(null))
-                .filter(u -> u != null)
-                .collect(Collectors.toList());
+        List<User> participants;
+        if (isAuthorized) {
+            // Authorized users get full participant list
+            participants = participations.stream()
+                    .map(p -> userRepository.findById(p.getUserId()).orElse(null))
+                    .filter(u -> u != null)
+                    .collect(Collectors.toList());
+        } else {
+            // Non-authorized users get empty list but correct count
+            participants = new java.util.ArrayList<>();
+        }
 
         Map<String, Object> result = new java.util.HashMap<>();
         result.put("participants", participants);
-        result.put("totalCount", participants.size());
+        result.put("totalCount", participations.size());
         return result;
     }
 

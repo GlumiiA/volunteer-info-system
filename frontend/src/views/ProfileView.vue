@@ -8,10 +8,11 @@ import { useToast } from 'primevue'
 import * as userService from '@/services/user'
 import { useRouter } from 'vue-router'
 
+const { user, isOrgRepresentative, isAuthenticated, refreshUser } = useAuth()
+
 /** @typedef {import('@/types/user').UserData} UserData */
 /** @typedef {import('@/types/event').EventEntry} EventEntry */
 
-const { user, isOrgRepresentative, isAuthenticated } = useAuth()
 const toast = useToast()
 const router = useRouter()
 
@@ -29,7 +30,28 @@ const isLoadingEvents = ref(false)
 // Загружаем данные пользователя
 const loadUserData = () => {
   if (user.value) {
-    userData.value = { ...user.value }
+    try {
+      userData.value = { ...user.value }
+      // Ensure avatar field is set from avatarUrl if needed
+      if (userData.value && userData.value.avatarUrl && !userData.value.avatar) {
+        userData.value.avatar = userData.value.avatarUrl
+      }
+      // Ensure all required fields exist
+      if (!userData.value.name) {
+        userData.value.name = userData.value.username || 'Пользователь'
+      }
+      if (!userData.value.email) {
+        userData.value.email = ''
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error)
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: 'Не удалось загрузить данные пользователя',
+        life: 3000,
+      })
+    }
   }
 }
 
@@ -134,34 +156,120 @@ onMounted(() => {
 // Следим за изменениями user
 watch(user, (newUser) => {
   if (newUser) {
-    userData.value = { ...newUser }
-    // Reload events when user changes
-    if (isAuthenticated.value) {
-      loadOrganizedEvents()
-      loadVolunteerBook()
+    try {
+      userData.value = { ...newUser }
+      // Ensure avatar field is set from avatarUrl if needed
+      if (userData.value && userData.value.avatarUrl && !userData.value.avatar) {
+        userData.value.avatar = userData.value.avatarUrl
+      }
+      // Ensure all required fields exist
+      if (userData.value && !userData.value.name) {
+        userData.value.name = userData.value.username || 'Пользователь'
+      }
+      if (userData.value && !userData.value.email) {
+        userData.value.email = ''
+      }
+      // Reload events when user changes
+      if (isAuthenticated.value) {
+        loadOrganizedEvents()
+        loadVolunteerBook()
+      }
+    } catch (error) {
+      console.error('Error updating user data:', error)
     }
   }
 }, { immediate: true })
 
 // Функция для загрузки аватара
-const handleAvatarUpload = (event) => {
+const handleAvatarUpload = async (event) => {
   const file = event.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (userData.value) {
-        userData.value.avatar = e.target.result
-        console.log('Avatar uploaded:', userData.value.avatar)
-      }
+  if (!file) {
+    return
+  }
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Файл должен быть изображением',
+      life: 3000,
+    })
+    return
+  }
+
+  // Validate file size (max 1MB)
+  if (file.size > 1000000) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Размер файла не должен превышать 1 МБ',
+      life: 3000,
+    })
+    return
+  }
+
+  try {
+    const avatarUrl = await userService.uploadAvatar(file)
+    
+    // Update local user data
+    if (userData.value) {
+      userData.value.avatar = avatarUrl
+      userData.value.avatarUrl = avatarUrl
     }
-    reader.readAsDataURL(file)
+    
+    // Refresh user data from server
+    const { refreshUser } = useAuth()
+    await refreshUser()
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Аватар успешно загружен',
+      life: 3000,
+    })
+  } catch (error) {
+    console.error('Error uploading avatar:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось загрузить аватар',
+      life: 3000,
+    })
   }
 }
 
 // Функция для удаления аватара
-const removeAvatar = () => {
-  if (userData.value) {
+const removeAvatar = async () => {
+  if (!userData.value) {
+    return
+  }
+
+  try {
+    // Call delete avatar endpoint
+    await userService.deleteAvatar()
+    
+    // Update local data
     userData.value.avatar = null
+    userData.value.avatarUrl = null
+    
+    // Refresh user data from server
+    await refreshUser()
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Аватар удален',
+      life: 3000,
+    })
+  } catch (error) {
+    console.error('Error removing avatar:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось удалить аватар',
+      life: 3000,
+    })
   }
 }
 
@@ -178,12 +286,12 @@ const isOrgMode = computed(() => {
       <div class="header-content">
         <div class="avatar-section">
           <div class="avatar-wrapper">
-            <img v-if="userData.avatar" :src="userData.avatar" alt="Avatar" class="avatar-image" />
+            <img v-if="userData.avatar || userData.avatarUrl" :src="userData.avatar || userData.avatarUrl" alt="Avatar" class="avatar-image" />
             <div v-else class="avatar-placeholder">
               <i class="pi pi-user" style="font-size: 3rem"></i>
             </div>
             <!-- Кнопка удаления аватара -->
-            <button v-if="userData.avatar" @click="removeAvatar" class="remove-avatar-btn" title="Удалить аватар">
+            <button v-if="userData.avatar || userData.avatarUrl" @click="removeAvatar" class="remove-avatar-btn" title="Удалить аватар">
               <i class="pi pi-times"></i>
             </button>
           </div>

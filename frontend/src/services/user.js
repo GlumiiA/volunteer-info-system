@@ -137,3 +137,96 @@ export const updateUser = async (userData) => {
 
   return await response.json()
 }
+
+/**
+ * Get user by ID
+ * GET /users/{id}
+ */
+export const getUserById = async (userId) => {
+  const token = getAuthToken()
+  if (!token) {
+    throw new Error('Not authenticated')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+    method: 'GET',
+    headers: getHeaders(true),
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(`Failed to fetch user: ${errorText || response.statusText}`)
+  }
+
+  return await response.json()
+}
+
+/**
+ * Upload avatar
+ * POST /users/me/avatar
+ */
+export const uploadAvatar = async (file) => {
+  const token = getAuthToken()
+  if (!token) {
+    throw new Error('Not authenticated')
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const response = await fetch(`${API_BASE_URL}/users/me/avatar`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: 'include',
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = `Failed to upload avatar: ${errorText || response.statusText}`
+    try {
+      const error = await response.json().catch(() => ({}))
+      errorMessage = error.message || error.detail || errorMessage
+    } catch (e) {
+      // Error text is not JSON, use the text as-is
+    }
+    throw new Error(errorMessage)
+  }
+
+  const result = await response.json()
+  return result.avatarUrl
+}
+
+/**
+ * Delete avatar
+ * DELETE /users/me/avatar
+ */
+export const deleteAvatar = async () => {
+  const token = getAuthToken()
+  if (!token) {
+    throw new Error('Not authenticated')
+  }
+
+  const response = await fetch(`${API_BASE_URL}/users/me/avatar`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    let errorMessage = `Failed to delete avatar: ${errorText || response.statusText}`
+    try {
+      const error = await response.json().catch(() => ({}))
+      errorMessage = error.message || error.detail || errorMessage
+    } catch (e) {
+      // Error text is not JSON, use the text as-is
+    }
+    throw new Error(errorMessage)
+  }
+}

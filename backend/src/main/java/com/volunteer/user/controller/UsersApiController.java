@@ -55,6 +55,12 @@ public class UsersApiController implements UsersApi {
         return ResponseEntity.ok(response);
     }
 
+    @DeleteMapping("/users/me/avatar")
+    public ResponseEntity<Void> usersMeAvatarDelete() {
+        userService.deleteAvatar();
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/users/me/events")
     public ResponseEntity<com.volunteer.user.dto.UsersMeEvents> usersMeEventsGet(
             @RequestParam(required = false, defaultValue = "all") String status) {
@@ -66,6 +72,12 @@ public class UsersApiController implements UsersApi {
     public ResponseEntity<List<Review>> usersMeReviewsGet() {
         List<Review> reviews = userService.getUserReviews();
         return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("/users/{id}")
+    public ResponseEntity<User> usersIdGet(@PathVariable Integer id) {
+        User user = userService.getUserById(id);
+        return ResponseEntity.ok(user);
     }
 
     @GetMapping("/users/me/volunteer-book")

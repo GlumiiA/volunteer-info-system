@@ -7,7 +7,7 @@ import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const { isDark, toggleTheme } = useThemeMode()
-const { isAuthenticated, logout, user, isAdmin, setAuthData } = useAuth()
+const { isAuthenticated, logout, user, isAdmin } = useAuth()
 
 const handleLogout = async () => {
   await logout()
@@ -20,23 +20,6 @@ const goToProfile = () => {
 
 const goToAdmin = () => {
   router.push({ name: 'admin' })
-}
-
-// Тестовая функция для переключения роли
-const toggleAdminRole = () => {
-  if (!user.value) return
-
-  const newRole = user.value.role === 'ADMIN' ? 'USER' : 'ADMIN'
-  const updatedUser = {
-    ...user.value,
-    role: newRole,
-  }
-
-  // Обновляем данные пользователя
-  const currentToken = localStorage.getItem('auth_token')
-  setAuthData(currentToken, updatedUser)
-
-  console.log(`🔄 Роль изменена на: ${newRole}`)
 }
 </script>
 
@@ -58,14 +41,6 @@ const toggleAdminRole = () => {
     <template #end>
       <RoundButton :icon="isDark ? 'pi pi-moon' : 'pi pi-sun'" @click="toggleTheme" />
       <template v-if="isAuthenticated">
-        <!-- Тестовая кнопка для переключения роли -->
-        <Button
-          @click="toggleAdminRole"
-          :label="isAdmin ? '🔧 Тест: → Юзер' : '🔧 Тест: → Админ'"
-          size="small"
-          severity="help"
-          outlined
-        />
         <Button @click="goToProfile" label="Профиль" size="small" />
         <Button @click="handleLogout" label="Выйти" size="small" severity="secondary" />
       </template>

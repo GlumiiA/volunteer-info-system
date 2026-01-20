@@ -70,10 +70,49 @@ public class UserService {
         return userRepository.save(user);
     }
 
+    @Transactional
     public String uploadAvatar(MultipartFile file) {
-        // Simple implementation - in production, save to file storage and return URL
-        // For now, just return a placeholder
-        return "/api/v1/avatars/" + currentUserService.getCurrentUserId() + ".jpg";
+        User user = getCurrentUser();
+        
+        // Validate file
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("File is empty");
+        }
+        
+        // Validate file type
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.startsWith("image/"))) {
+            throw new RuntimeException("File must be an image");
+        }
+        
+        // Convert image to base64 data URL for storage
+        // In production, you would save to file storage (S3, local filesystem, etc.)
+        // For now, we'll store as base64 data URL in the database
+        try {
+            byte[] fileBytes = file.getBytes();
+            String base64Image = java.util.Base64.getEncoder().encodeToString(fileBytes);
+            String dataUrl = "data:" + contentType + ";base64," + base64Image;
+            
+            // Store in user entity
+            user.setAvatarUrl(dataUrl);
+            userRepository.save(user);
+            
+            return dataUrl;
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Failed to process avatar file", e);
+        }
+    }
+    
+    @Transactional
+    public void deleteAvatar() {
+        User user = getCurrentUser();
+        user.setAvatarUrl(null);
+        userRepository.save(user);
+    }
+    
+    public User getUserById(Integer userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     public com.volunteer.user.dto.UsersMeEvents getUserEvents(String status) {
