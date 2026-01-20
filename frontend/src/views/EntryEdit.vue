@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useAuth } from '@/composables/useAuth'
+import * as eventsService from '@/services/events'
 import {
   Panel,
   Card,
@@ -19,22 +21,17 @@ import {
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const { user, token, isAuthenticated, isOrgRepresentative } = useAuth()
 
-const API_BASE_URL = 'http://localhost:8080/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
-// Заглушка текущего пользователя
-const currentUser = ref({
-  id: 999,
-  name: 'Тестовый Пользователь',
-  email: 'test@example.com',
-  role: 'ORG_REPRESENTATIVE', // USER, ORG_REPRESENTATIVE, ADMIN
-  organisationId: 1,
-})
+const isNewEntry = ref(false)
 
-// Получить название организации по ID
+// Get organization name
+const organizationName = ref('')
+
 const getOrganizationName = () => {
-  const org = organizations.value.find((o) => o.value === entryForm.value.organisationId)
-  return org ? org.label : 'Организация'
+  return organizationName.value || 'Организация'
 }
 
 // Заглушка данных для редактирования/создания
@@ -53,12 +50,20 @@ const entryForm = ref({
   organisationId: null,
 })
 
-// Заглушка списка организаций
-const organizations = ref([
-  { label: 'Спортивный фонд "Движение"', value: 1 },
-  { label: 'Благотворительный фонд "Помощь"', value: 2 },
-  { label: 'Волонтерский центр ИТМО', value: 3 },
-])
+// Load organizations
+const organizations = ref([])
+
+const loadOrganizations = async () => {
+  try {
+    const orgs = await eventsService.getOrganizations()
+    organizations.value = orgs.map((org) => ({
+      label: org.name,
+      value: org.id,
+    }))
+  } catch (error) {
+    console.error('Failed to load organizations:', error)
+  }
+}
 
 // Состояние формы
 const isSubmitting = ref(false)
@@ -69,30 +74,65 @@ const errors = ref({})
 const loadEntryData = async () => {
   isLoading.value = true
   try {
-    const entryId = route.params.id
-    const entryType = route.query.type || 'individual'
+    const entryId = parseInt(route.params.id)
+    if (isNaN(entryId)) {
+      throw new Error('Invalid entry ID')
+    }
 
-    // Заглушка: GET /events/{type}/{id}
-    // const response = await fetch(`${API_BASE_URL}/events/${entryType}/${entryId}`)
-    // const data = await response.json()
+    // Try to load as mass event first
+    let eventData = await eventsService.getMassEvent(entryId)
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    if (eventData) {
+      entryForm.value = {
+        id: eventData.id,
+        type: 'MASS',
+        title: eventData.title,
+        description: eventData.description || '',
+        volunteersRequired: eventData.volunteersRequired || 1,
+        ageRestriction: eventData.ageRestriction || 0,
+        dateStart: eventData.dateStart ? new Date(eventData.dateStart) : null,
+        dateEnd: eventData.dateEnd ? new Date(eventData.dateEnd) : null,
+        address: eventData.address || '',
+        workHours: eventData.workHours || null,
+        organisationId: eventData.organisationId,
+      }
 
-    // Mock данные для редактирования
-    entryForm.value = {
-      id: parseInt(entryId),
-      type: entryType === 'mass' ? 'MASS' : 'INDIVIDUAL',
-      title: 'Помощь в организации городского марафона',
-      description:
-        'Требуются добровольцы для помощи в организации городского благотворительного марафона.',
-      volunteersRequired: 20,
-      ageRestriction: 18,
-      dateStart: new Date('2026-03-15'),
-      dateEnd: new Date('2026-03-15'),
-      address: 'Центральный парк, г. Санкт-Петербург',
-      workHours: 6,
-      headerImage: null,
-      organisationId: 1,
+      // Load organization name
+      if (eventData.organisationId) {
+        const org = await eventsService.getOrganization(eventData.organisationId)
+        if (org) {
+          organizationName.value = org.name
+        }
+      }
+    } else {
+      // Try to load as individual event
+      eventData = await eventsService.getIndividualEvent(entryId)
+
+      if (eventData) {
+        entryForm.value = {
+          id: eventData.id,
+          type: 'INDIVIDUAL',
+          title: eventData.title,
+          description: eventData.description || '',
+          volunteersRequired: eventData.volunteersRequired || 1,
+          ageRestriction: eventData.ageRestriction || 0,
+          dateStart: eventData.dateStart ? new Date(eventData.dateStart) : null,
+          dateEnd: eventData.dateEnd ? new Date(eventData.dateEnd) : null,
+          address: '',
+          workHours: null,
+          organisationId: eventData.organisationId,
+        }
+
+        // Load organization name if exists
+        if (eventData.organisationId) {
+          const org = await eventsService.getOrganization(eventData.organisationId)
+          if (org) {
+            organizationName.value = org.name
+          }
+        }
+      } else {
+        throw new Error('Entry not found')
+      }
     }
   } catch (err) {
     console.error('Ошибка загрузки заявки:', err)
@@ -183,6 +223,17 @@ const handleSubmit = async () => {
   isSubmitting.value = true
 
   try {
+    if (!isAuthenticated.value || !token.value) {
+      toast.add({
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: 'Требуется авторизация',
+        life: 3000,
+      })
+      router.push({ name: 'auth' })
+      return
+    }
+
     const endpoint =
       entryForm.value.type === 'MASS' ? `${API_BASE_URL}/events/mass` : `${API_BASE_URL}/events/individual`
     const url = `${endpoint}/${entryForm.value.id}`
@@ -194,7 +245,7 @@ const handleSubmit = async () => {
       dateStart: entryForm.value.dateStart?.toISOString(),
       dateEnd: entryForm.value.dateEnd?.toISOString(),
       volunteersRequired: entryForm.value.volunteersRequired,
-      ageRestriction: entryForm.value.ageRestriction,
+      ageRestriction: entryForm.value.ageRestriction || null,
     }
 
     // Дополнительные поля только для корпоративных заявок
@@ -203,21 +254,20 @@ const handleSubmit = async () => {
       requestData.workHours = entryForm.value.workHours
     }
 
-    // Заглушка: PUT /events/{type}/{id}
-    // const response = await fetch(url, {
-    //   method: 'PUT',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${authToken}`,
-    //   },
-    //   body: JSON.stringify(requestData),
-    // })
-    // const savedEntry = await response.json()
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token.value}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify(requestData),
+    })
 
-    // Имитация запроса к API
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    console.log('Обновление заявки:', requestData)
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(errorText || `HTTP ${response.status}: ${response.statusText}`)
+    }
 
     toast.add({
       severity: 'success',
@@ -233,7 +283,7 @@ const handleSubmit = async () => {
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: 'Не удалось сохранить заявку. Попробуйте еще раз.',
+      detail: err.message || 'Не удалось сохранить заявку. Попробуйте еще раз.',
       life: 3000,
     })
   } finally {
@@ -250,7 +300,8 @@ const handleFileUpload = (event) => {
   // Здесь будет логика загрузки изображения на сервер
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await loadOrganizations()
   loadEntryData()
 })
 
@@ -261,10 +312,6 @@ onMounted(() => {
   <Panel class="entry-edit-panel">
     <div class="entry-edit-header">
       <h1>Редактирование заявки</h1>
-    </div>
-      <p v-else class="role-badge">
-        <i class="pi pi-user"></i> Пользователь
-      </p>
     </div>
 
     <!-- Индикатор загрузки -->

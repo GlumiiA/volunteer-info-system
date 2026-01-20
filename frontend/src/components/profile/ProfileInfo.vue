@@ -2,29 +2,89 @@
 import { Button, DatePicker, InputText, Rating, Textarea } from 'primevue'
 import { ref, computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from 'primevue'
 import OrganizationRequestForm from './OrganizationRequestForm.vue'
+import * as userService from '@/services/user'
 
 /** @typedef {import('@/types/user').UserData} UserData */
 
 /** @type {import('vue').Ref<UserData|null>} */
 const userData = defineModel()
 
-const { user } = useAuth()
+const { user, refreshUser } = useAuth()
+const toast = useToast()
 
 const isEditing = ref(false)
 const showOrgRequestDialog = ref(false)
+const isSaving = ref(false)
+
+// Store original values to restore on cancel
+const originalUserData = ref(null)
 
 // Определяем роль на основе userData, а не глобального user
 const isOrgRepresentative = computed(() => userData.value?.role === 'ORG_REPRESENTATIVE')
 const isUser = computed(() => userData.value?.role === 'USER')
 
 const toggleEditing = () => {
-  isEditing.value = !isEditing.value
+  if (isEditing.value) {
+    // Cancel editing - restore original values
+    if (originalUserData.value) {
+      Object.assign(userData.value, originalUserData.value)
+    }
+    isEditing.value = false
+    originalUserData.value = null
+  } else {
+    // Start editing - save original values
+    originalUserData.value = { ...userData.value }
+    isEditing.value = true
+  }
+}
+
+const saveProfile = async () => {
+  if (!userData.value) {
+    return
+  }
+
+  isSaving.value = true
+  try {
+    // Update user profile
+    const updatedUser = await userService.updateUser(userData.value)
+    
+    // Update local user data
+    Object.assign(userData.value, updatedUser)
+    
+    // Refresh global user data
+    await refreshUser()
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Профиль успешно обновлен',
+      life: 3000,
+    })
+    
+    isEditing.value = false
+    originalUserData.value = null
+  } catch (error) {
+    console.error('Error saving profile:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось сохранить изменения профиля',
+      life: 3000,
+    })
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const handleRequestSubmitted = () => {
-  // Можно добавить логику обновления данных пользователя
-  console.log('Organization request submitted')
+  // Refresh user data after request submission
+  refreshUser().then(() => {
+    if (user.value) {
+      Object.assign(userData.value, user.value)
+    }
+  })
 }
 </script>
 
@@ -95,11 +155,21 @@ const handleRequestSubmitted = () => {
 
       <div class="button-group">
         <template v-if="isEditing">
-          <Button @click="toggleEditing" severity="success">
+          <Button 
+            @click="saveProfile" 
+            severity="success"
+            :disabled="isSaving"
+            :loading="isSaving"
+          >
             <i class="pi pi-check"></i>
-            Сохранить
+            {{ isSaving ? 'Сохранение...' : 'Сохранить' }}
           </Button>
-          <Button @click="toggleEditing" severity="secondary" outlined>
+          <Button 
+            @click="toggleEditing" 
+            severity="secondary" 
+            outlined
+            :disabled="isSaving"
+          >
             <i class="pi pi-times"></i>
             Отмена
           </Button>

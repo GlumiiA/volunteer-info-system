@@ -40,7 +40,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = header.substring(BEARER_PREFIX.length());
             try {
                 String email = jwtProvider.getEmail(token);
-                Long userId = jwtProvider.getUserId(token);
+                Integer userId = jwtProvider.getUserId(token);
 
                 JwtUser jwtUser = new JwtUser(userId, email);
 

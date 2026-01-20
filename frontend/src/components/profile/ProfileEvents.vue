@@ -1,6 +1,7 @@
 <script setup>
 import { Badge, Button, Tag } from 'primevue'
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 
 /** @typedef {import('@/types/event'.EventEntry)} EventEntry */
 
@@ -11,10 +12,16 @@ const props = defineProps({
   }
 })
 
+const router = useRouter()
+
 /** @type EventEntry[] */
 const events = defineModel()
 
 const hasEvents = computed(() => events.value && events.value.length > 0)
+
+const handleEventClick = (event) => {
+  router.push({ name: 'entry-view', params: { id: event.id } })
+}
 
 const formatDate = (dateString) => {
   if (!dateString) return 'Не указано'
@@ -116,6 +123,7 @@ const getStatusSeverity = (status) => {
             outlined 
             icon="pi pi-arrow-right" 
             iconPos="right"
+            @click="handleEventClick(event)"
           />
         </div>
       </div>

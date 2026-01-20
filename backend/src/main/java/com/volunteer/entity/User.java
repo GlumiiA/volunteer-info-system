@@ -53,4 +53,13 @@ public class User {
 
   @Column(name = "password_hash_bcrypt", nullable = false)
   private String passwordHash;
+
+  // Map to OpenAPI name field
+  public String getName() {
+    return username;
+  }
+
+  public void setName(String name) {
+    this.username = name;
+  }
 }

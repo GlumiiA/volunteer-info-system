@@ -26,6 +26,9 @@ public class IndividualEvent {
     @Column(name = "organisation_id")
     private Integer organisationId;
 
+    @Column(name = "creator_user_id")
+    private Integer creatorUserId;
+
     @Column(name = "title", nullable = false)
     private String title;
 

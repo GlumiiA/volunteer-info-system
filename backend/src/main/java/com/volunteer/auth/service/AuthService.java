@@ -33,7 +33,7 @@ public class AuthService {
 
         User savedUser = userRepository.save(user);
 
-        String token = jwtProvider.generateToken(Long.valueOf(savedUser.getId()), savedUser.getEmail());
+        String token = jwtProvider.generateToken(savedUser.getId(), savedUser.getEmail());
 
         AuthResponse response = new AuthResponse();
         response.setToken(token);
@@ -50,7 +50,7 @@ public class AuthService {
             throw new RuntimeException("Invalid email or password");
         }
 
-        String token = jwtProvider.generateToken(Long.valueOf(user.getId()), user.getEmail());
+        String token = jwtProvider.generateToken(user.getId(), user.getEmail());
 
         AuthResponse response = new AuthResponse();
         response.setToken(token);

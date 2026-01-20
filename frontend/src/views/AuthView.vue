@@ -26,14 +26,6 @@ const registerData = ref({
 
 const loading = ref(false)
 
-// Быстрый вход с тестовыми данными
-const quickLogin = () => {
-  loginData.value = {
-    email: 'test@example.com',
-    password: 'test123456',
-  }
-  handleLogin()
-}
 
 // Переключение между формами
 const toggleForm = () => {
@@ -100,6 +92,8 @@ const handleRegister = async () => {
 // OAuth2 авторизация
 const handleOAuth = (provider) => {
   const redirectUri = `${window.location.origin}/auth/callback`
+  // Store provider in sessionStorage for callback
+  sessionStorage.setItem('oauth_provider', provider)
   window.location.href = `http://localhost:8080/api/v1/auth/oauth2/${provider}/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`
 }
 </script>
@@ -113,20 +107,6 @@ const handleOAuth = (provider) => {
         </template>
 
         <template #content>
-          <!-- Подсказка с тестовыми данными -->
-          <div v-if="isLogin" class="test-credentials-hint">
-            <i class="pi pi-info-circle"></i>
-            <div>
-              <strong>Тестовые учетные записи:</strong><br />
-              <div class="test-account">
-                👤 Пользователь: <code>test@example.com</code> / <code>test123456</code>
-              </div>
-              <div class="test-account">
-                🏢 Представитель организации: <code>org@example.com</code> / <code>test123456</code>
-              </div>
-            </div>
-          </div>
-
           <!-- Форма логина -->
           <form v-if="isLogin" @submit.prevent="handleLogin" class="auth-form">
             <div class="field">
@@ -160,15 +140,6 @@ const handleOAuth = (provider) => {
               :loading="loading"
               class="w-full"
               severity="primary"
-            />
-            
-            <Button
-              type="button"
-              label="🚀 Быстрый вход (тест)"
-              @click="quickLogin"
-              class="w-full"
-              severity="secondary"
-              outlined
             />
           </form>
 
@@ -298,33 +269,6 @@ const handleOAuth = (provider) => {
   margin-bottom: var(--space-m);
 }
 
-.test-credentials-hint {
-  display: flex;
-  gap: var(--space-s);
-  padding: var(--space-m);
-  background: var(--blue-50);
-  border: 1px solid var(--blue-200);
-  border-radius: 6px;
-  margin-bottom: var(--space-m);
-  font-size: 0.9rem;
-  color: var(--blue-900);
-}
-
-.test-credentials-hint i {
-  flex-shrink: 0;
-  font-size: 1.2rem;
-  color: var(--blue-500);
-  margin-top: 2px;
-}
-
-.test-credentials-hint code {
-  background: var(--blue-100);
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Courier New', monospace;
-  font-size: 0.85rem;
-  color: var(--blue-800);
-}
 
 .field {
   display: flex;

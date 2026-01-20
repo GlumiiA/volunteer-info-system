@@ -26,7 +26,7 @@ public class JwtProvider {
         this.key = Keys.hmacShaKeyFor(decodedKey);
     }
 
-    public String generateToken(Long userId, String email) {
+    public String generateToken(Integer userId, String email) {
         Date now = Date.from(clock.instant());
         Date expiry = Date.from(clock.instant().plusMillis(jwtProperties.getExpiration()));
 
@@ -43,8 +43,8 @@ public class JwtProvider {
         return getAllClaims(token).getSubject();
     }
 
-    public Long getUserId(String token) {
-        return getAllClaims(token).get("id", Long.class);
+    public Integer getUserId(String token) {
+        return getAllClaims(token).get("id", Integer.class);
     }
 
     private Claims getAllClaims(String token) {

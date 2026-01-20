@@ -4,10 +4,11 @@ import { useRouter } from 'vue-router'
 import { Button } from 'primevue'
 import EventCard from '@/components/EventCard.vue'
 import EventFilters from '@/components/EventFilters.vue'
+import { getOrganizations } from '@/services/organizations'
 import cogImage from '@/assets/images/cog.png'
 import pawImage from '@/assets/images/paw.png'
 
-const API_BASE_URL = 'http://localhost:8080/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 const router = useRouter()
 
 const allEvents = ref([])
@@ -24,12 +25,9 @@ const filters = ref({
   type: null,
 })
 
-// Заглушка списка организаций
+// Список организаций
 const organizations = ref([
   { label: 'Все организации', value: null },
-  { label: 'Спортивный фонд "Движение"', value: 1 },
-  { label: 'Благотворительный фонд "Помощь"', value: 2 },
-  { label: 'Волонтерский центр ИТМО', value: 3 },
 ])
 
 // Типы заявок
@@ -101,82 +99,89 @@ const handleCreateEntry = () => {
   router.push({ name: 'entry-create' })
 }
 
+// Загрузка списка организаций
+const loadOrganizations = async () => {
+  try {
+    const orgs = await getOrganizations()
+    organizations.value = [
+      { label: 'Все организации', value: null },
+      ...orgs.map(org => ({ label: org.name, value: org.id })),
+    ]
+  } catch (err) {
+    console.error('Ошибка загрузки организаций:', err)
+  }
+}
+
 // Загрузка всех заявок (массовые + индивидуальные)
 const loadAllEvents = async () => {
   isLoading.value = true
   error.value = null
 
   try {
-    // Заглушка: GET /events/mass с параметрами фильтрации
-    // const params = new URLSearchParams()
-    // if (filters.value.title) params.append('title', filters.value.title)
-    // if (filters.value.dateFrom) params.append('dateFrom', filters.value.dateFrom.toISOString().split('T')[0])
-    // if (filters.value.dateTo) params.append('dateTo', filters.value.dateTo.toISOString().split('T')[0])
-    // if (filters.value.address) params.append('address', filters.value.address)
-    // if (filters.value.organisationId) params.append('organisationId', filters.value.organisationId)
-    // const massEventsResponse = await fetch(`${API_BASE_URL}/events/mass?${params}`)
-    // const massEvents = await massEventsResponse.json()
+    // Параметры запроса
+    const params = new URLSearchParams()
+    if (filters.value.title) params.append('title', filters.value.title)
+    if (filters.value.dateFrom) {
+      const dateFrom = filters.value.dateFrom instanceof Date 
+        ? filters.value.dateFrom 
+        : new Date(filters.value.dateFrom)
+      params.append('dateFrom', dateFrom.toISOString().split('T')[0])
+    }
+    if (filters.value.dateTo) {
+      const dateTo = filters.value.dateTo instanceof Date 
+        ? filters.value.dateTo 
+        : new Date(filters.value.dateTo)
+      params.append('dateTo', dateTo.toISOString().split('T')[0])
+    }
+    if (filters.value.address) params.append('address', filters.value.address)
+    if (filters.value.organisationId) params.append('organisationId', filters.value.organisationId)
 
-    // Заглушка: GET /events/individual с параметрами фильтрации
-    // const individualEventsResponse = await fetch(`${API_BASE_URL}/events/individual?${params}`)
-    // const individualEvents = await individualEventsResponse.json()
+    // Загрузка массовых мероприятий
+    const massEventsResponse = await fetch(`${API_BASE_URL}/events/mass?${params.toString()}`)
+    if (!massEventsResponse.ok) {
+      throw new Error(`HTTP ${massEventsResponse.status}: ${massEventsResponse.statusText}`)
+    }
+    const massEvents = await massEventsResponse.json()
 
-    // Имитация задержки сети
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    // Загрузка индивидуальных мероприятий
+    const individualParams = new URLSearchParams()
+    if (filters.value.title) individualParams.append('title', filters.value.title)
+    if (filters.value.dateFrom) {
+      const dateFrom = filters.value.dateFrom instanceof Date 
+        ? filters.value.dateFrom 
+        : new Date(filters.value.dateFrom)
+      individualParams.append('dateFrom', dateFrom.toISOString().split('T')[0])
+    }
+    if (filters.value.dateTo) {
+      const dateTo = filters.value.dateTo instanceof Date 
+        ? filters.value.dateTo 
+        : new Date(filters.value.dateTo)
+      individualParams.append('dateTo', dateTo.toISOString().split('T')[0])
+    }
+    if (filters.value.organisationId) individualParams.append('organisationId', filters.value.organisationId)
 
-    // Временные mock данные (до подключения API)
-    const mockMassEvents = [
-      {
-        id: 1,
-        type: 'MASS',
-        organisationId: 1,
-        title: 'Помощь в организации городского марафона',
-        description:
-          'Требуются добровольцы для помощи в организации городского благотворительного марафона. Обязанности: помощь на регистрации участников, работа на пунктах питания.',
-        volunteersRequired: 20,
-        ageRestriction: 18,
-        dateStart: '2026-03-15T09:00:00',
-        dateEnd: '2026-03-15T18:00:00',
-        address: 'Центральный парк, г. Санкт-Петербург',
-        workHours: 8,
-        headerImage: cogImage,
-      },
-      {
-        id: 2,
-        type: 'MASS',
-        organisationId: 2,
-        title: 'Уборка приюта для животных',
-        description:
-          'Нужна помощь в уборке и уходе за животными в приюте. Задачи: уборка вольеров, кормление, прогулки с собаками. Приветствуется любовь к животным!',
-        volunteersRequired: 5,
-        ageRestriction: 16,
-        dateStart: '2026-02-20T10:00:00',
-        dateEnd: '2026-02-20T16:00:00',
-        address: 'Приют "Добрые руки", ул. Садовая 25',
-        workHours: 6,
-        headerImage: pawImage,
-      },
-    ]
+    const individualEventsResponse = await fetch(`${API_BASE_URL}/events/individual?${individualParams.toString()}`)
+    if (!individualEventsResponse.ok) {
+      throw new Error(`HTTP ${individualEventsResponse.status}: ${individualEventsResponse.statusText}`)
+    }
+    const individualEvents = await individualEventsResponse.json()
 
-    const mockIndividualEvents = [
-      {
-        id: 3,
-        type: 'INDIVIDUAL',
-        organisationId: null,
-        title: 'Помощь пожилому человеку',
-        description:
-          'Нужен волонтер для помощи пожилому человеку с покупками и уборкой дома. Задачи: сходить в магазин, провести легкую уборку, пообщаться.',
-        volunteersRequired: 1,
-        ageRestriction: 18,
-        dateStart: '2026-02-10T14:00:00',
-        dateEnd: '2026-02-10T17:00:00',
-        address: 'ул. Пушкина, д. 12, кв. 45',
-        headerImage: cogImage,
-      },
-    ]
+    // Преобразование массовых мероприятий
+    const massEventsFormatted = (massEvents || []).map(event => ({
+      ...event,
+      type: 'MASS',
+      headerImage: cogImage,
+    }))
+
+    // Преобразование индивидуальных мероприятий
+    const individualEventsFormatted = (individualEvents || []).map(event => ({
+      ...event,
+      type: 'INDIVIDUAL',
+      headerImage: pawImage,
+    }))
 
     // Объединение массовых и индивидуальных заявок
-    const events = [...mockMassEvents, ...mockIndividualEvents]
+    const events = [...massEventsFormatted, ...individualEventsFormatted]
 
     // Сортировка по дате начала (ближайшие сначала)
     events.sort((a, b) => new Date(a.dateStart) - new Date(b.dateStart))
@@ -190,8 +195,9 @@ const loadAllEvents = async () => {
   }
 }
 
-onMounted(() => {
-  loadAllEvents()
+onMounted(async () => {
+  await loadOrganizations()
+  await loadAllEvents()
 })
 </script>
 

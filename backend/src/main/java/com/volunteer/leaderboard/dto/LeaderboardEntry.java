@@ -7,13 +7,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class LeaderboardEntry {
 
     @JsonProperty("userId")
-    @Schema(description = "User ID")
-    private Long userId;
+    @Schema(description = "ID пользователя")
+    private Integer userId;
 
-    @JsonProperty("username")
+    @JsonProperty("fullName")
     @NotNull
-    @Schema(description = "Username")
-    private String username;
+    @Schema(description = "Полное имя пользователя")
+    private String fullName;
 
     @JsonProperty("score")
     @NotNull
@@ -27,27 +27,27 @@ public class LeaderboardEntry {
     public LeaderboardEntry() {
     }
 
-    public LeaderboardEntry(Long userId, String username, Integer score, Integer rank) {
+    public LeaderboardEntry(Integer userId, String fullName, Integer score, Integer rank) {
         this.userId = userId;
-        this.username = username;
+        this.fullName = fullName;
         this.score = score;
         this.rank = rank;
     }
 
-    public Long getUserId() {
+    public Integer getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(Integer userId) {
         this.userId = userId;
     }
 
-    public String getUsername() {
-        return username;
+    public String getFullName() {
+        return fullName;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
     }
 
     public Integer getScore() {
@@ -83,7 +83,7 @@ public class LeaderboardEntry {
     public String toString() {
         return "LeaderboardEntry{" +
                 "userId=" + userId +
-                ", username='" + username + '\'' +
+                ", fullName='" + fullName + '\'' +
                 ", score=" + score +
                 ", rank=" + rank +
                 '}';

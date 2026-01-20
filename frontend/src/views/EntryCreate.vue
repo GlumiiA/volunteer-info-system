@@ -17,27 +17,13 @@ import {
   SelectButton,
 } from 'primevue'
 
+import { useAuth } from '@/composables/useAuth'
+
 const router = useRouter()
 const toast = useToast()
+const { user, isOrgRepresentative } = useAuth()
 
-const API_BASE_URL = 'http://localhost:8080/api/v1'
-
-// Заглушка текущего пользователя
-const currentUser = ref({
-  id: 999,
-  name: 'Тестовый Пользователь',
-  email: 'test@example.com',
-  role: 'USER', // USER, ORG_REPRESENTATIVE, ADMIN
-  organisationId: 1,
-})
-
-// Для тестирования - переключатель роли
-const roleOptions = ref([
-  { label: 'Пользователь', value: 'USER' },
-  { label: 'Представитель организации', value: 'ORG_REPRESENTATIVE' },
-])
-
-const isOrgRepresentative = computed(() => currentUser.value.role === 'ORG_REPRESENTATIVE')
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'
 
 // Доступные типы заявок в зависимости от роли
 const availableEntryTypes = computed(() => {
@@ -52,7 +38,7 @@ const availableEntryTypes = computed(() => {
 
 // Получить название организации по ID
 const getOrganizationName = () => {
-  const org = organizations.value.find((o) => o.value === currentUser.value.organisationId)
+  const org = organizations.value.find((o) => o.value === user.value?.organisationId)
   return org ? org.label : 'вашей организации'
 }
 
@@ -85,7 +71,7 @@ const errors = ref({})
 // Инициализация при монтировании
 onMounted(() => {
   if (isOrgRepresentative.value) {
-    entryForm.value.organisationId = currentUser.value.organisationId
+    entryForm.value.organisationId = user.value?.organisationId
   }
 })
 
@@ -164,9 +150,9 @@ const handleSubmit = async () => {
   isSubmitting.value = true
 
   try {
+    // Определение endpoint в зависимости от типа заявки
     const endpoint =
       entryForm.value.type === 'MASS' ? `${API_BASE_URL}/events/mass` : `${API_BASE_URL}/events/individual`
-    const method = 'POST'
 
     // Подготовка данных для отправки
     const requestData = {
@@ -185,23 +171,30 @@ const handleSubmit = async () => {
       // organisationId будет взят из токена авторизации на бэкенде
     }
 
-    // Заглушка: POST /events/{type}
-    // const response = await fetch(endpoint, {
-    //   method,
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${authToken}`,
-    //   },
-    //   body: JSON.stringify(requestData),
-    // })
-    // const savedEntry = await response.json()
+    // Получение токена из localStorage
+    const authToken = localStorage.getItem('auth_token')
+    if (!authToken) {
+      throw new Error('Требуется авторизация для создания заявки')
+    }
 
-    // Имитация запроса к API
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    // Отправка запроса к API
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(requestData),
+    })
 
-    const mockId = Math.floor(Math.random() * 1000) + 100
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`)
+    }
 
-    console.log('Создание заявки:', requestData)
+    const savedEntry = await response.json()
+
+    console.log('Заявка создана:', savedEntry)
 
     toast.add({
       severity: 'success',
@@ -211,7 +204,13 @@ const handleSubmit = async () => {
     })
 
     // Переход к странице просмотра созданной заявки
-    router.push({ name: 'entry-view', params: { id: mockId } })
+    router.push({ 
+      name: 'entry-view', 
+      params: { 
+        id: savedEntry.id,
+        type: entryForm.value.type.toLowerCase()
+      } 
+    })
   } catch (err) {
     console.error('Ошибка создания заявки:', err)
     toast.add({
@@ -235,42 +234,11 @@ const handleFileUpload = (event) => {
 }
 
 // Смена роли для тестирования
-const handleRoleChange = () => {
-  toast.add({
-    severity: 'info',
-    summary: 'Роль изменена',
-    detail: `Текущая роль: ${currentUser.value.role === 'USER' ? 'Пользователь' : 'Представитель организации'}`,
-    life: 2000,
-  })
-
-  // Сбрасываем тип заявки и специфичные поля при смене роли
-  if (currentUser.value.role === 'USER' && entryForm.value.type === 'MASS') {
-    entryForm.value.type = 'INDIVIDUAL'
-    entryForm.value.organisationId = null
-    entryForm.value.address = ''
-    entryForm.value.workHours = null
-  } else if (currentUser.value.role === 'ORG_REPRESENTATIVE') {
-    // При переключении на ПрОрг автоматически выбираем организацию
-    entryForm.value.organisationId = currentUser.value.organisationId
-  }
-}
 </script>
 
 <template>
   <Toast />
   <Panel class="entry-create-panel">
-    <!-- Переключатель роли для тестирования -->
-    <div class="test-role-switcher">
-      <label class="form-label">🧪 Тестирование ролей:</label>
-      <SelectButton
-        v-model="currentUser.role"
-        :options="roleOptions"
-        optionLabel="label"
-        optionValue="value"
-        @change="handleRoleChange"
-      />
-    </div>
-
     <div class="entry-create-header">
       <h1>Создание заявки</h1>
       <p v-if="isOrgRepresentative" class="role-badge">
@@ -479,15 +447,6 @@ const handleRoleChange = () => {
   margin: 0 auto;
 }
 
-.test-role-switcher {
-  background: #fff3cd;
-  padding: var(--space-m);
-  border-radius: var(--border-radius);
-  margin-bottom: var(--space-l);
-  display: flex;
-  align-items: center;
-  gap: var(--space-m);
-}
 
 .entry-create-header {
   margin-bottom: var(--space-l);

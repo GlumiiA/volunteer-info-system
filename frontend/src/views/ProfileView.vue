@@ -2,13 +2,18 @@
 import ProfileEvents from '@/components/profile/ProfileEvents.vue'
 import ProfileInfo from '@/components/profile/ProfileInfo.vue'
 import { TabList, TabPanel, TabPanels, Tabs, Tab, Button, FileUpload } from 'primevue'
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { useToast } from 'primevue'
+import * as userService from '@/services/user'
+import { useRouter } from 'vue-router'
 
 /** @typedef {import('@/types/user').UserData} UserData */
 /** @typedef {import('@/types/event').EventEntry} EventEntry */
 
-const { user, isOrgRepresentative } = useAuth()
+const { user, isOrgRepresentative, isAuthenticated } = useAuth()
+const toast = useToast()
+const router = useRouter()
 
 /** @type {import('vue').Ref<UserData|null>} */
 const userData = ref(null)
@@ -19,29 +24,122 @@ const participatedEvents = ref([])
 /** @type {import('vue').Ref<EventEntry[]>} */
 const organizedEvents = ref([])
 
-// Тестовый режим для ПрОрг
-const testOrgMode = ref(false)
+const isLoadingEvents = ref(false)
 
 // Загружаем данные пользователя
 const loadUserData = () => {
-  console.log('Loading user data:', user.value)
   if (user.value) {
     userData.value = { ...user.value }
-    console.log('User data loaded:', userData.value)
-  } else {
-    console.warn('No user data available')
+  }
+}
+
+// Загружаем организованные мероприятия
+const loadOrganizedEvents = async () => {
+  if (!isAuthenticated.value) {
+    return
+  }
+
+  isLoadingEvents.value = true
+  try {
+    const eventsData = await userService.getUserEvents('all')
+    
+    // Combine mass and individual events
+    const allEvents = []
+    
+    if (eventsData.massEvents && Array.isArray(eventsData.massEvents)) {
+      eventsData.massEvents.forEach((event) => {
+        allEvents.push({
+          id: event.id,
+          type: 'MASS',
+          title: event.title,
+          description: event.description || '',
+          dateStart: event.dateStart,
+          dateEnd: event.dateEnd,
+          address: event.address || null,
+          workHours: event.workHours || null,
+          volunteersRequired: event.volunteersRequired || 0,
+          ageRestriction: event.ageRestriction || null,
+        })
+      })
+    }
+    
+    if (eventsData.individualEvents && Array.isArray(eventsData.individualEvents)) {
+      eventsData.individualEvents.forEach((event) => {
+        allEvents.push({
+          id: event.id,
+          type: 'INDIVIDUAL',
+          title: event.title,
+          description: event.description || '',
+          dateStart: event.dateStart,
+          dateEnd: event.dateEnd,
+          address: null,
+          workHours: null,
+          volunteersRequired: event.volunteersRequired || 0,
+          ageRestriction: event.ageRestriction || null,
+        })
+      })
+    }
+    
+    organizedEvents.value = allEvents
+  } catch (error) {
+    console.error('Failed to load organized events:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось загрузить организованные мероприятия',
+      life: 3000,
+    })
+  } finally {
+    isLoadingEvents.value = false
+  }
+}
+
+// Загружаем волонтерскую книжку
+const loadVolunteerBook = async () => {
+  if (!isAuthenticated.value) {
+    return
+  }
+
+  try {
+    const volunteerBook = await userService.getUserVolunteerBook()
+    
+    if (volunteerBook.entries && Array.isArray(volunteerBook.entries)) {
+      participatedEvents.value = volunteerBook.entries.map((entry) => ({
+        id: entry.eventId,
+        type: 'MASS', // Volunteer book entries are from mass events
+        title: entry.event?.title || `Мероприятие #${entry.eventId}`,
+        description: entry.event?.description || '',
+        dateStart: entry.event?.dateStart || null,
+        dateEnd: entry.event?.dateEnd || null,
+        address: entry.event?.address || null,
+        workHours: entry.event?.workHours || null,
+        volunteersRequired: null,
+        ageRestriction: null,
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to load volunteer book:', error)
+    // Don't show error toast for volunteer book - it's optional
   }
 }
 
 onMounted(() => {
   loadUserData()
+  if (isAuthenticated.value) {
+    loadOrganizedEvents()
+    loadVolunteerBook()
+  }
 })
 
 // Следим за изменениями user
 watch(user, (newUser) => {
-  console.log('User changed:', newUser)
   if (newUser) {
     userData.value = { ...newUser }
+    // Reload events when user changes
+    if (isAuthenticated.value) {
+      loadOrganizedEvents()
+      loadVolunteerBook()
+    }
   }
 }, { immediate: true })
 
@@ -67,32 +165,9 @@ const removeAvatar = () => {
   }
 }
 
-// Переключение тестового режима ПрОрг
-const toggleOrgMode = () => {
-  testOrgMode.value = !testOrgMode.value
-  if (userData.value) {
-    if (testOrgMode.value) {
-      // Переключение в режим ПрОрг
-      userData.value.role = 'ORG_REPRESENTATIVE'
-      userData.value.organisationId = 1
-      userData.value.organizationName = 'Красный Крест'
-      userData.value.volunteerHours = 150
-      userData.value.rating = 4.9
-    } else {
-      // Возврат к обычному режиму
-      userData.value.role = 'USER'
-      userData.value.organisationId = null
-      userData.value.organizationName = null
-      userData.value.volunteerHours = 42.5
-      userData.value.rating = 4.8
-    }
-  }
-}
-
-const isOrgMode = ref(false)
-watch(() => userData.value?.role, (newRole) => {
-  isOrgMode.value = newRole === 'ORG_REPRESENTATIVE' || testOrgMode.value
-}, { immediate: true })
+const isOrgMode = computed(() => {
+  return userData.value?.role === 'ORG_REPRESENTATIVE' || isOrgRepresentative.value
+})
 </script>
 
 <template>
@@ -135,18 +210,6 @@ watch(() => userData.value?.role, (newRole) => {
               <i class="pi pi-heart"></i>
               Волонтер
             </span>
-          </div>
-          <!-- Кнопка тестирования режима ПрОрг -->
-          <div class="test-mode-section">
-            <Button 
-              @click="toggleOrgMode" 
-              :severity="testOrgMode ? 'success' : 'secondary'"
-              outlined
-              size="small"
-              :icon="testOrgMode ? 'pi pi-check-circle' : 'pi pi-eye'"
-            >
-              {{ testOrgMode ? 'Режим ПрОрг активен' : 'Тест: Режим ПрОрг' }}
-            </Button>
           </div>
         </div>
       </div>
@@ -351,29 +414,6 @@ watch(() => userData.value?.role, (newRole) => {
   font-weight: 600;
 }
 
-.test-mode-section {
-  margin-top: var(--space-m);
-}
-
-.test-mode-section :deep(.p-button) {
-  font-size: 0.875rem;
-  padding: var(--space-xs) var(--space-m);
-  border-radius: 20px;
-  transition: all 0.3s;
-}
-
-.test-mode-section :deep(.p-button[data-p-severity="success"]) {
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
-  }
-}
 
 .badge-org {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -15,20 +15,35 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080
  * @returns {Promise<{token: string, user: Object}>}
  */
 export async function register(data) {
-  const response = await fetch(`${API_BASE_URL}/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  })
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.message || 'Ошибка регистрации')
+    if (!response.ok) {
+      let errorMessage = 'Ошибка регистрации'
+      try {
+        const error = await response.json()
+        errorMessage = error.message || error.detail || errorMessage
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || errorMessage
+      }
+      throw new Error(errorMessage)
+    }
+
+    return response.json()
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Не удалось подключиться к серверу. Убедитесь, что сервер запущен на http://localhost:8080')
+    }
+    throw error
   }
-
-  return response.json()
 }
 
 /**
@@ -40,20 +55,35 @@ export async function register(data) {
  * @returns {Promise<{token: string, user: Object}>}
  */
 export async function login(data) {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  })
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    })
 
-  if (!response.ok) {
-    const error = await response.json()
-    throw new Error(error.message || 'Ошибка входа')
+    if (!response.ok) {
+      let errorMessage = 'Ошибка входа'
+      try {
+        const error = await response.json()
+        errorMessage = error.message || error.detail || errorMessage
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = response.statusText || errorMessage
+      }
+      throw new Error(errorMessage)
+    }
+
+    return response.json()
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Не удалось подключиться к серверу. Убедитесь, что сервер запущен на http://localhost:8080')
+    }
+    throw error
   }
-
-  return response.json()
 }
 
 /**

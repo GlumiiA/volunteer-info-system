@@ -2,32 +2,61 @@
 import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ProgressSpinner } from 'primevue'
+import { useAuth } from '@/composables/useAuth'
+import * as authService from '@/services/auth'
 
 const router = useRouter()
 const route = useRoute()
 const error = ref(null)
+const { setAuthData } = useAuth()
 
 onMounted(async () => {
   try {
-    const { code, state, provider } = route.query
+    // Check if token is in URL (from backend redirect after successful OAuth)
+    const urlParams = new URLSearchParams(window.location.search)
+    const token = urlParams.get('token')
+    
+    if (token) {
+      // Backend already handled the OAuth and redirected with token
+      // Fetch user data
+      try {
+        const userData = await authService.getCurrentUser(token)
+        setAuthData(token, userData)
+        router.push('/')
+        return
+      } catch (err) {
+        console.error('Failed to fetch user data:', err)
+        throw new Error('Не удалось получить данные пользователя')
+      }
+    }
 
+    // If no token, OAuth provider redirected back with code
+    const { code, state } = route.query
+    
     if (!code) {
       throw new Error('Отсутствует код авторизации')
     }
 
-    // TODO: Реализовать запрос к API GET /api/v1/auth/oauth2/{provider}/callback
-    console.log('OAuth callback:', { code, state, provider })
-
-    // Заглушка: имитация обработки callback
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // После успешной авторизации сохранить токен и перенаправить
-    // localStorage.setItem('token', response.token)
+    // Try to detect provider from referrer or stored state
+    // For now, we'll need to pass provider in state or detect from URL
+    // Check if we can get provider from state or sessionStorage
+    let provider = sessionStorage.getItem('oauth_provider')
     
+    if (!provider) {
+      // Try to detect from URL or default to yandex
+      // In a real implementation, store provider when initiating OAuth
+      provider = 'yandex' // Default fallback
+    }
+
+    // Make API call to handle callback
+    const response = await authService.handleOAuthCallback(provider, code, state || '')
+    setAuthData(response.token, response.user)
+    sessionStorage.removeItem('oauth_provider')
     router.push('/')
   } catch (err) {
     console.error('OAuth callback error:', err)
     error.value = err.message || 'Ошибка авторизации'
+    sessionStorage.removeItem('oauth_provider')
     
     // Перенаправить на страницу авторизации через 3 секунды
     setTimeout(() => {

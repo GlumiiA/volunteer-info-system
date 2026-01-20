@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   Panel,
@@ -11,144 +11,300 @@ import {
   Chip,
   Accordion,
   AccordionPanel,
+  Dialog,
 } from 'primevue'
 import { useToast } from 'primevue'
+import { useAuth } from '@/composables/useAuth'
+import * as eventsService from '@/services/events'
 import cogImage from '@/assets/images/cog.png'
 import pawImage from '@/assets/images/paw.png'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
-
-// Заглушки данных для разных заявок
-const entriesData = {
-  1: {
-    entry: {
-      id: 1,
-      type: 'MASS',
-      title: 'Помощь в организации городского марафона',
-      description:
-        'Требуются добровольцы для помощи в организации городского благотворительного марафона. ' +
-        'Обязанности: помощь на регистрации участников, работа на пунктах питания, сопровождение бегунов. ' +
-        'Все необходимое оборудование будет предоставлено. Приветствуется опыт волонтерской работы, но не обязателен.',
-      volunteersRequired: 20,
-      volunteersRegistered: 12,
-      ageRestriction: 18,
-      dateStart: '2026-03-15',
-      dateEnd: '2026-03-15',
-      address: 'Центральный парк, г. Санкт-Петербург',
-      hoursToWork: 6,
-      headerImage: cogImage,
-      organizationName: 'Спортивный фонд "Движение"',
-      status: 'ACTIVE',
-    },
-    author: {
-      id: 101,
-      name: 'Иванов Иван Иванович',
-      avatar: null,
-    },
-    participants: [
-      { id: 1, name: 'Петрова Анна', avatar: null, status: 'APPROVED' },
-      { id: 2, name: 'Сидоров Петр', avatar: null, status: 'APPROVED' },
-      { id: 3, name: 'Кузнецова Мария', avatar: null, status: 'PENDING' },
-    ],
-    isAuthor: true,
-    isParticipant: false,
-  },
-  2: {
-    entry: {
-      id: 2,
-      type: 'MASS',
-      title: 'Уборка приюта для животных',
-      description:
-        'Нужна помощь в уборке и уходе за животными в приюте. ' +
-        'Задачи: уборка вольеров, кормление, прогулки с собаками. ' +
-        'Приветствуется любовь к животным! Не требуется опыт работы с животными, мы все покажем и расскажем.',
-      volunteersRequired: 5,
-      volunteersRegistered: 2,
-      ageRestriction: 16,
-      dateStart: '2026-02-20',
-      dateEnd: '2026-02-20',
-      address: 'Приют "Добрые руки", ул. Садовая 25',
-      hoursToWork: 4,
-      headerImage: pawImage,
-      organizationName: 'Благотворительный фонд "Помощь животным"',
-      status: 'ACTIVE',
-    },
-    author: {
-      id: 102,
-      name: 'Смирнова Елена Петровна',
-      avatar: null,
-    },
-    participants: [
-      { id: 4, name: 'Алексеев Дмитрий', avatar: null, status: 'APPROVED' },
-      { id: 5, name: 'Васильева Ольга', avatar: null, status: 'APPROVED' },
-    ],
-    isAuthor: false,
-    isParticipant: false,
-  },
-  3: {
-    entry: {
-      id: 3,
-      type: 'INDIVIDUAL',
-      title: 'Помощь пожилому человеку',
-      description:
-        'Нужен волонтер для помощи пожилому человеку с покупками и уборкой дома. ' +
-        'Задачи: сходить в магазин за продуктами, провести легкую уборку в квартире, пообщаться. ' +
-        'Моя бабушка будет очень рада компании!',
-      volunteersRequired: 1,
-      volunteersRegistered: 0,
-      ageRestriction: 18,
-      dateStart: '2026-02-10',
-      dateEnd: '2026-02-10',
-      address: 'ул. Пушкина, д. 12, кв. 45',
-      hoursToWork: null,
-      headerImage: cogImage,
-      organizationName: null,
-      status: 'ACTIVE',
-    },
-    author: {
-      id: 103,
-      name: 'Новикова Мария Александровна',
-      avatar: null,
-    },
-    participants: [],
-    isAuthor: false,
-    isParticipant: false,
-  },
-}
+const { user, token, isAuthenticated } = useAuth()
 
 // Текущие данные
 const entry = ref({})
+const entryType = ref(null) // 'MASS' or 'INDIVIDUAL'
 const author = ref({})
+const organization = ref(null)
 const participants = ref([])
+const requests = ref([])
 const isAuthor = ref(false)
 const isParticipant = ref(false)
 const participantStatus = ref(null) // 'PENDING', 'APPROVED', 'REJECTED'
-const userRole = ref('VOLUNTEER') // VOLUNTEER, ORGANIZATION, ADMIN
 const isLoading = ref(true)
+const showDeleteDialog = ref(false)
 
-// Текущий пользователь (заглушка)
-const currentUser = ref({
-  id: 999,
-  name: 'Текущий Пользователь',
+// Format date for display
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ru-RU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  } catch {
+    return dateString
+  }
+}
+
+// Format datetime for display
+const formatDateTime = (dateString) => {
+  if (!dateString) return ''
+  try {
+    const date = new Date(dateString)
+    return date.toLocaleString('ru-RU', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return dateString
+  }
+}
+
+// Get header image based on event type
+const headerImage = computed(() => {
+  if (entryType.value === 'MASS') {
+    return cogImage
+  }
+  return pawImage
 })
 
+// Load organization info for mass events
+const loadOrganization = async (organizationId) => {
+  if (!organizationId) return
+  try {
+    const org = await eventsService.getOrganization(organizationId)
+    if (org) {
+      organization.value = org
+    }
+  } catch (error) {
+    console.error('Failed to load organization:', error)
+  }
+}
+
+// Load participants (for event authors)
+const loadParticipants = async () => {
+  if (!isAuthor.value || !entry.value.id || !entryType.value) return
+  try {
+    const result = await eventsService.getEventParticipants(entryType.value.toLowerCase(), entry.value.id)
+    if (result && result.participants) {
+      participants.value = result.participants.map((p) => ({
+        id: p.id,
+        name: p.name || p.fullName || 'Неизвестный пользователь',
+        avatar: p.avatar,
+        status: 'APPROVED',
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to load participants:', error)
+  }
+}
+
+// Load requests (for event authors)
+const loadRequests = async () => {
+  if (!isAuthor.value || !entry.value.id || !entryType.value) return
+  try {
+    const requestsData = await eventsService.getEventRequests(entryType.value.toLowerCase(), entry.value.id)
+    if (requestsData && Array.isArray(requestsData)) {
+      requests.value = requestsData.map((req) => ({
+        id: req.requestId,
+        userId: req.user?.id,
+        name: req.user?.name || req.user?.fullName || 'Неизвестный пользователь',
+        avatar: req.user?.avatar,
+        status: req.status,
+        applicationDate: req.applicationDate,
+      }))
+      // Also update participants list with pending requests
+      const pendingRequests = requestsData.filter((req) => req.status === 'PENDING')
+      pendingRequests.forEach((req) => {
+        if (req.user) {
+          participants.value.push({
+            id: req.user.id,
+            name: req.user.name || req.user.fullName || 'Неизвестный пользователь',
+            avatar: req.user.avatar,
+            status: 'PENDING',
+          })
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Failed to load requests:', error)
+  }
+}
+
+// Check if current user is participant
+const checkParticipantStatus = async () => {
+  if (!isAuthenticated.value || !entry.value.id || !entryType.value) {
+    isParticipant.value = false
+    return
+  }
+
+  try {
+    // Check if user has a request/participation for this event
+    const requestsData = await eventsService.getEventRequests(entryType.value.toLowerCase(), entry.value.id)
+    if (requestsData && Array.isArray(requestsData)) {
+      const userRequest = requestsData.find((req) => req.user?.id === user.value?.id)
+      if (userRequest) {
+        isParticipant.value = true
+        participantStatus.value = userRequest.status
+      }
+    }
+  } catch (error) {
+    // If user doesn't have permission, they're not a participant
+    isParticipant.value = false
+  }
+}
+
 // Загрузка данных по ID
-const loadEntryData = () => {
+const loadEntryData = async () => {
   isLoading.value = true
   const entryId = parseInt(route.params.id)
-  const data = entriesData[entryId]
 
-  if (data) {
-    entry.value = data.entry
-    author.value = data.author
-    participants.value = [...data.participants]
-    isAuthor.value = data.isAuthor
-    isParticipant.value = data.isParticipant
+  if (isNaN(entryId)) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Неверный ID заявки',
+      life: 3000,
+    })
+    router.push({ name: 'search' })
+    return
+  }
+
+  try {
+    // Try to fetch as mass event first
+    let eventData = await eventsService.getMassEvent(entryId)
+
+    if (eventData) {
+      entryType.value = 'MASS'
+      entry.value = {
+        id: eventData.id,
+        type: 'MASS',
+        title: eventData.title,
+        description: eventData.description || '',
+        volunteersRequired: eventData.volunteersRequired || 0,
+        volunteersRegistered: 0, // Will be updated from participants/requests
+        ageRestriction: eventData.ageRestriction || null,
+        dateStart: eventData.dateStart,
+        dateEnd: eventData.dateEnd,
+        address: eventData.address || null,
+        hoursToWork: eventData.workHours || null,
+        organizationId: eventData.organisationId,
+        organizationName: null, // Will be loaded separately
+        status: 'ACTIVE',
+      }
+
+      // Load organization info
+      if (eventData.organisationId) {
+        await loadOrganization(eventData.organisationId)
+        if (organization.value) {
+          entry.value.organizationName = organization.value.name
+        }
+      }
+
+      // Check if current user is the organization representative (author)
+      if (isAuthenticated.value && user.value) {
+        isAuthor.value = user.value.role === 'ORG_REPRESENTATIVE' &&
+                         user.value.organisationId === eventData.organisationId
+      }
+
+      // Load participants and requests if user is author
+      if (isAuthor.value) {
+        await Promise.all([loadParticipants(), loadRequests()])
+        // Update volunteers registered count
+        entry.value.volunteersRegistered = participants.value.length
+      } else {
+        // Check if user is participant
+        await checkParticipantStatus()
+      }
+    } else {
+      // Try to fetch as individual event
+      eventData = await eventsService.getIndividualEvent(entryId)
+
+      if (eventData) {
+        entryType.value = 'INDIVIDUAL'
+        entry.value = {
+          id: eventData.id,
+          type: 'INDIVIDUAL',
+          title: eventData.title,
+          description: eventData.description || '',
+          volunteersRequired: eventData.volunteersRequired || 1,
+          volunteersRegistered: 0, // Will be updated from participants/requests
+          ageRestriction: eventData.ageRestriction || null,
+          dateStart: eventData.dateStart,
+          dateEnd: eventData.dateEnd,
+          address: null, // Individual events don't have address in backend
+          hoursToWork: null,
+          organizationId: eventData.organisationId,
+          organizationName: null,
+          creatorUserId: eventData.creatorUserId,
+          status: 'ACTIVE',
+        }
+
+        // Load organization info if exists
+        if (eventData.organisationId) {
+          await loadOrganization(eventData.organisationId)
+          if (organization.value) {
+            entry.value.organizationName = organization.value.name
+          }
+        }
+
+        // Check if current user is the creator (author)
+        if (isAuthenticated.value && user.value) {
+          isAuthor.value = eventData.creatorUserId === user.value.id ||
+                          (user.value.role === 'ORG_REPRESENTATIVE' &&
+                           user.value.organisationId === eventData.organisationId)
+        }
+
+        // Load participants and requests if user is author
+        if (isAuthor.value) {
+          await Promise.all([loadParticipants(), loadRequests()])
+          entry.value.volunteersRegistered = participants.value.length
+        } else {
+          // Check if user is participant
+          await checkParticipantStatus()
+        }
+
+        // Try to get author info (for individual events, author is the creator)
+        if (eventData.creatorUserId) {
+          // TODO: Fetch user info by ID from /api/v1/users/{id}
+          // For now, just show creator ID
+          author.value = {
+            id: eventData.creatorUserId,
+            name: `Пользователь #${eventData.creatorUserId}`,
+            avatar: null,
+          }
+        }
+      } else {
+        // Event not found
+        toast.add({
+          severity: 'error',
+          summary: 'Ошибка',
+          detail: 'Заявка не найдена',
+          life: 3000,
+        })
+        router.push({ name: 'search' })
+        return
+      }
+    }
+
     isLoading.value = false
-  } else {
-    // Если заявка не найдена, перенаправляем на поиск
+  } catch (error) {
+    console.error('Failed to load entry:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось загрузить заявку. Попробуйте позже.',
+      life: 3000,
+    })
     router.push({ name: 'search' })
   }
 }
@@ -162,48 +318,42 @@ const handleEdit = () => {
 }
 
 // Подать заявку на участие
-// В будущем: POST /events/mass/{id}/participate или POST /events/individual/{id}/participate
 const handleJoin = async () => {
+  if (!isAuthenticated.value) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Требуется авторизация',
+      detail: 'Пожалуйста, войдите в систему для подачи заявки',
+      life: 3000,
+    })
+    router.push({ name: 'auth' })
+    return
+  }
+
   try {
-    // Заглушка API запроса
-    console.log(`Подача заявки на участие в мероприятии ${entry.value.id}`)
-    // const response = await fetch(`/api/v1/events/${entry.value.type === 'MASS' ? 'mass' : 'individual'}/${entry.value.id}/participate`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Authorization': `Bearer ${token}`,
-    //     'Content-Type': 'application/json'
-    //   }
-    // })
+    await eventsService.participateInEvent(entryType.value.toLowerCase(), entry.value.id)
+    
+    isParticipant.value = true
+    participantStatus.value = 'PENDING'
 
-    // Имитация успешной подачи заявки
-    setTimeout(() => {
-      isParticipant.value = true
-      participantStatus.value = 'PENDING'
+    // Reload requests to show the new request
+    if (isAuthor.value) {
+      await loadRequests()
+      entry.value.volunteersRegistered = participants.value.length
+    }
 
-      // Добавляем текущего пользователя в список участников со статусом PENDING
-      participants.value.push({
-        id: currentUser.value.id,
-        name: currentUser.value.name,
-        avatar: null,
-        status: 'PENDING',
-      })
-
-      entry.value.volunteersRegistered += 1
-
-      toast.add({
-        severity: 'success',
-        summary: 'Заявка отправлена',
-        detail:
-          'Ваша заявка на участие успешно отправлена. Ожидайте подтверждения от организатора.',
-        life: 3000,
-      })
-    }, 500)
+    toast.add({
+      severity: 'success',
+      summary: 'Заявка отправлена',
+      detail: 'Ваша заявка на участие успешно отправлена. Ожидайте подтверждения от организатора.',
+      life: 3000,
+    })
   } catch (error) {
     console.error('Ошибка при подаче заявки:', error)
     toast.add({
       severity: 'error',
       summary: 'Ошибка',
-      detail: 'Не удалось отправить заявку. Попробуйте позже.',
+      detail: error.message || 'Не удалось отправить заявку. Попробуйте позже.',
       life: 3000,
     })
   }
@@ -211,35 +361,47 @@ const handleJoin = async () => {
 
 // Отозвать заявку на участие
 const handleLeave = async () => {
+  if (!isAuthenticated.value) {
+    return
+  }
+
   try {
-    // Заглушка API запроса
-    console.log(`Отзыв заявки на участие в мероприятии ${entry.value.id}`)
-    // const response = await fetch(`/api/v1/events/${entry.value.type === 'MASS' ? 'mass' : 'individual'}/${entry.value.id}/participate/${requestId}`, {
-    //   method: 'DELETE',
-    //   headers: {
-    //     'Authorization': `Bearer ${token}`
-    //   }
-    // })
-
-    // Имитация успешного отзыва заявки
-    setTimeout(() => {
-      isParticipant.value = false
-      participantStatus.value = null
-
-      // Удаляем текущего пользователя из списка участников
-      const index = participants.value.findIndex((p) => p.id === currentUser.value.id)
-      if (index > -1) {
-        participants.value.splice(index, 1)
-        entry.value.volunteersRegistered -= 1
-      }
-
+    // Find the user's request ID
+    const userRequest = requests.value.find((req) => req.userId === user.value.id)
+    if (!userRequest) {
       toast.add({
-        severity: 'info',
-        summary: 'Заявка отозвана',
-        detail: 'Ваша заявка на участие отозвана.',
+        severity: 'error',
+        summary: 'Ошибка',
+        detail: 'Заявка не найдена',
         life: 3000,
       })
-    }, 500)
+      return
+    }
+
+    // TODO: Implement DELETE /events/{type}/{eventId}/participate/{requestId}
+    // For now, just update the local state
+    isParticipant.value = false
+    participantStatus.value = null
+
+    // Remove from requests if visible
+    const index = requests.value.findIndex((req) => req.userId === user.value.id)
+    if (index > -1) {
+      requests.value.splice(index, 1)
+    }
+
+    // Remove from participants if visible
+    const participantIndex = participants.value.findIndex((p) => p.id === user.value.id)
+    if (participantIndex > -1) {
+      participants.value.splice(participantIndex, 1)
+      entry.value.volunteersRegistered = Math.max(0, entry.value.volunteersRegistered - 1)
+    }
+
+    toast.add({
+      severity: 'info',
+      summary: 'Заявка отозвана',
+      detail: 'Ваша заявка на участие отозвана.',
+      life: 3000,
+    })
   } catch (error) {
     console.error('Ошибка при отзыве заявки:', error)
     toast.add({
@@ -251,17 +413,146 @@ const handleLeave = async () => {
   }
 }
 
-const handleApproveParticipant = (participantId) => {
-  console.log('Одобрить участника:', participantId)
+const handleApproveParticipant = async (requestId) => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'}/events/${entryType.value.toLowerCase()}/${entry.value.id}/requests/${requestId}/accept`,
+      {
+        method: 'POST',
+        headers: getHeaders(true),
+        credentials: 'include',
+      }
+    )
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('У вас нет прав для одобрения заявок на это мероприятие')
+      }
+      if (response.status === 400) {
+        const errorText = await response.text()
+        throw new Error(errorText || 'Достигнуто максимальное количество волонтеров')
+      }
+      const errorText = await response.text()
+      throw new Error(errorText || `Failed to approve: ${response.statusText}`)
+    }
+
+    // Reload requests and participants
+    await Promise.all([loadRequests(), loadParticipants()])
+    entry.value.volunteersRegistered = participants.value.filter((p) => p.status === 'APPROVED').length
+
+    toast.add({
+      severity: 'success',
+      summary: 'Заявка одобрена',
+      detail: 'Заявка на участие успешно одобрена.',
+      life: 3000,
+    })
+  } catch (error) {
+    console.error('Ошибка при одобрении заявки:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось одобрить заявку. Попробуйте позже.',
+      life: 3000,
+    })
+  }
 }
 
-const handleRejectParticipant = (participantId) => {
-  console.log('Отклонить участника:', participantId)
+const handleRejectParticipant = async (requestId) => {
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1'}/events/${entryType.value.toLowerCase()}/${entry.value.id}/requests/${requestId}/reject`,
+      {
+        method: 'POST',
+        headers: getHeaders(true),
+        credentials: 'include',
+      }
+    )
+
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('У вас нет прав для отклонения заявок на это мероприятие')
+      }
+      const errorText = await response.text()
+      throw new Error(errorText || `Failed to reject: ${response.statusText}`)
+    }
+
+    // Reload requests
+    await loadRequests()
+
+    toast.add({
+      severity: 'info',
+      summary: 'Заявка отклонена',
+      detail: 'Заявка на участие отклонена.',
+      life: 3000,
+    })
+  } catch (error) {
+    console.error('Ошибка при отклонении заявки:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Не удалось отклонить заявку. Попробуйте позже.',
+      life: 3000,
+    })
+  }
 }
 
-const handleDelete = () => {
-  console.log('Удалить заявку')
-  router.push({ name: 'search' })
+// Get headers helper
+const getHeaders = (includeAuth = false) => {
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+  if (includeAuth && token.value) {
+    headers['Authorization'] = `Bearer ${token.value}`
+  }
+  return headers
+}
+
+const openDeleteDialog = () => {
+  showDeleteDialog.value = true
+}
+
+const handleDelete = async () => {
+  showDeleteDialog.value = false
+
+  if (!isAuthenticated.value || !token.value) {
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: 'Требуется авторизация',
+      life: 3000,
+    })
+    return
+  }
+
+  try {
+    if (!entry.value.id || !entryType.value) {
+      throw new Error('Invalid entry data')
+    }
+
+    await eventsService.deleteEvent(entryType.value.toLowerCase(), entry.value.id)
+
+    toast.add({
+      severity: 'success',
+      summary: 'Успешно',
+      detail: 'Заявка успешно удалена',
+      life: 3000,
+    })
+
+    // Redirect to search page after deletion
+    router.push({ name: 'search' })
+  } catch (error) {
+    console.error('Ошибка при удалении заявки:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Ошибка',
+      detail: error.message || 'Не удалось удалить заявку. Попробуйте позже.',
+      life: 3000,
+    })
+  }
+}
+
+const cancelDelete = () => {
+  showDeleteDialog.value = false
 }
 
 const getStatusLabel = (status) => {
@@ -317,7 +608,7 @@ const getParticipantStatusLabel = (status) => {
             <i class="pi pi-pencil" />
             <span>Редактировать</span>
           </Button>
-          <Button v-if="isAuthor" @click="handleDelete" severity="danger" outlined>
+          <Button v-if="isAuthor" @click="openDeleteDialog" severity="danger" outlined>
             <i class="pi pi-trash" />
             <span>Удалить</span>
           </Button>
@@ -343,7 +634,7 @@ const getParticipantStatusLabel = (status) => {
 
       <Card class="entry-details">
         <template #header>
-          <img v-if="entry.headerImage" class="entry-image" alt="header" :src="entry.headerImage" />
+          <img v-if="headerImage" class="entry-image" alt="header" :src="headerImage" />
         </template>
         <template #content>
           <div class="detail-section">
@@ -360,7 +651,7 @@ const getParticipantStatusLabel = (status) => {
                 <i class="pi pi-calendar" />
                 <div>
                   <div class="detail-label">Дата проведения</div>
-                  <div class="detail-value">{{ entry.dateStart }} - {{ entry.dateEnd }}</div>
+                  <div class="detail-value">{{ formatDate(entry.dateStart) }} - {{ formatDate(entry.dateEnd) }}</div>
                 </div>
               </div>
 
@@ -421,8 +712,8 @@ const getParticipantStatusLabel = (status) => {
           <Divider v-if="isAuthor" />
 
           <div class="detail-section" v-if="isAuthor">
-            <h3>Участники</h3>
-            <div v-if="participants.length === 0" class="no-participants">
+            <h3>Заявки на участие</h3>
+            <div v-if="requests.length === 0" class="no-participants">
               <p style="color: var(--text-color-secondary); font-style: italic">
                 Пока нет заявок на участие
               </p>
@@ -432,38 +723,38 @@ const getParticipantStatusLabel = (status) => {
                 <template #header>
                   <div class="participants-header">
                     <i class="pi pi-users" />
-                    <span>Список участников ({{ participants.length }})</span>
+                    <span>Список заявок ({{ requests.length }})</span>
                   </div>
                 </template>
                 <template #default>
                   <div class="participants-list">
                     <Card
-                      v-for="participant in participants"
-                      :key="participant.id"
+                      v-for="request in requests"
+                      :key="request.id"
                       class="participant-card"
                     >
                       <template #content>
                         <div class="participant-info">
-                          <Avatar :label="participant.name[0]" shape="circle" />
-                          <span class="participant-name">{{ participant.name }}</span>
+                          <Avatar :label="request.name ? request.name[0] : '?'" shape="circle" />
+                          <span class="participant-name">{{ request.name }}</span>
                           <Chip
-                            :label="getParticipantStatusLabel(participant.status)"
-                            :class="'status-' + participant.status.toLowerCase()"
+                            :label="getParticipantStatusLabel(request.status)"
+                            :class="'status-' + request.status.toLowerCase()"
                           />
                           <div class="participant-actions">
                             <Button
-                              v-if="participant.status === 'PENDING'"
+                              v-if="request.status === 'PENDING'"
                               icon="pi pi-check"
-                              @click="handleApproveParticipant(participant.id)"
+                              @click="handleApproveParticipant(request.id)"
                               rounded
                               text
                               severity="success"
                               title="Одобрить"
                             />
                             <Button
-                              v-if="participant.status === 'PENDING'"
+                              v-if="request.status === 'PENDING'"
                               icon="pi pi-times"
-                              @click="handleRejectParticipant(participant.id)"
+                              @click="handleRejectParticipant(request.id)"
                               rounded
                               text
                               severity="danger"
@@ -481,6 +772,28 @@ const getParticipantStatusLabel = (status) => {
         </template>
       </Card>
     </template>
+
+    <!-- Delete Confirmation Dialog -->
+    <Dialog
+      v-model:visible="showDeleteDialog"
+      modal
+      header="Подтверждение удаления"
+      :style="{ width: '450px' }"
+      :closable="true"
+    >
+      <div class="delete-dialog-content">
+        <p>
+          Вы уверены, что хотите удалить заявку <strong>"{{ entry.title }}"</strong>?
+        </p>
+        <p style="color: #e24c4c; font-size: 0.9rem; margin-top: 1rem;">
+          Это действие нельзя отменить.
+        </p>
+      </div>
+      <template #footer>
+        <Button label="Отмена" icon="pi pi-times" @click="cancelDelete" text />
+        <Button label="Удалить" icon="pi pi-trash" @click="handleDelete" severity="danger" />
+      </template>
+    </Dialog>
   </Panel>
 </template>
 
@@ -652,5 +965,14 @@ const getParticipantStatusLabel = (status) => {
 .status-rejected {
   background-color: #f8d7da;
   color: #721c24;
+}
+
+.delete-dialog-content {
+  font-family: 'Roboto Flex', sans-serif;
+}
+
+.delete-dialog-content p {
+  margin: 0;
+  line-height: 1.6;
 }
 </style>
