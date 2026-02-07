@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="002-create-users-table" author="Aigul">
+        <createTable tableName="users">
+            <column name="id" type="SERIAL" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="organisation_id" type="INTEGER">
+                <constraints foreignKeyName="fk_users_organisation" 
+                             references="organisations(id)" 
+                             deleteCascade="true"/>
+            </column>
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="email" type="VARCHAR(255)">
+                <constraints nullable="true" unique="true"/>
+            </column>
+            <column name="description" type="TEXT"/>
+            <column name="birthday" type="DATE"/>
+            <column name="location" type="VARCHAR(255)"/>
+            <column name="volunteer_hours" type="FLOAT" defaultValueNumeric="0.0"/>
+            <column name="rating" type="FLOAT"/>
+            <column name="password_hash_bcrypt" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_users_organisation_id" tableName="users">
+            <column name="organisation_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

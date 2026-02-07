@@ -1,0 +1,2520 @@
+openapi: 3.0.3
+info:
+  title: Volunteer Information System API
+  description: API для системы управления волонтерскими мероприятиями
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+
+tags:
+  - name: auth
+    description: Аутентификация и авторизация
+  - name: users
+    description: Управление пользователями
+  - name: requests
+    description: Заявки (индивидуальные и корпоративные)
+  - name: participation
+    description: Участие в заявках
+  - name: organizations
+    description: Управление организациями
+  - name: leaderboard
+    description: Список лидеров
+  - name: admin
+    description: Административные функции
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth/authorize
+          tokenUrl: /oauth/token
+          scopes:
+            read: Чтение данных
+            write: Запись данных
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор пользователя
+        organisationId:
+          type: integer
+          nullable: true
+          description: ID организации (для представителей организации)
+        role:
+          type: string
+          enum: [USER, ORG_REPRESENTATIVE, ADMIN]
+          description: Роль пользователя
+        name:
+          type: string
+          description: Полное имя пользователя
+        email:
+          type: string
+          format: email
+          description: Email пользователя
+        description:
+          type: string
+          nullable: true
+          description: Описание "о себе"
+        birthday:
+          type: string
+          format: date
+          nullable: true
+          description: День рождения
+        location:
+          type: string
+          nullable: true
+          description: Место проживания
+        volunteerHours:
+          type: number
+          format: float
+          default: 0
+          description: Количество отработанных волонтерских часов
+        rating:
+          type: number
+          format: float
+          nullable: true
+          description: Средний рейтинг пользователя по отзывам
+
+    MassEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор массового мероприятия
+        organisationId:
+          type: integer
+          description: ID организации-организатора
+        title:
+          type: string
+          description: Название мероприятия
+        description:
+          type: string
+          description: Описание мероприятия
+        dateStart:
+          type: string
+          format: date-time
+          description: Дата и время начала
+        dateEnd:
+          type: string
+          format: date-time
+          description: Дата и время окончания
+        workHours:
+          type: number
+          format: float
+          description: Количество часов работы для волонтера
+        address:
+          type: string
+          description: Адрес проведения мероприятия
+        volunteersRequired:
+          type: integer
+          description: Требуемое количество волонтеров
+        ageRestriction:
+          type: integer
+          nullable: true
+          description: Возрастное ограничение
+
+    IndividualEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор индивидуальной заявки
+        organisationId:
+          type: integer
+          nullable: true
+          description: ID организации (если заявка от организации)
+        title:
+          type: string
+          description: Название заявки
+        description:
+          type: string
+          description: Описание заявки
+        dateStart:
+          type: string
+          format: date-time
+          description: Дата и время начала
+        dateEnd:
+          type: string
+          format: date-time
+          description: Дата и время окончания
+        volunteersRequired:
+          type: integer
+          description: Требуемое количество волонтеров
+        ageRestriction:
+          type: integer
+          nullable: true
+          description: Возрастное ограничение
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+          description: Место в рейтинге
+        userId:
+          type: integer
+          description: ID пользователя
+        fullName:
+          type: string
+          description: Полное имя пользователя
+        score:
+          type: integer
+          description: Количество баллов/часов
+
+    LeaderboardResponse:
+      type: object
+      properties:
+        leaderboard:
+          type: array
+          items:
+            $ref: '#/components/schemas/LeaderboardEntry'
+          description: Список лидеров
+        currentUserRank:
+          type: object
+          nullable: true
+          description: Позиция текущего пользователя (если авторизован)
+          properties:
+            rank:
+              type: integer
+            score:
+              type: integer
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - fullName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        fullName:
+          type: string
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT токен для авторизации
+        user:
+          $ref: '#/components/schemas/User'
+
+    CreateMassEventRequest:
+      type: object
+      required:
+        - title
+        - description
+        - dateStart
+        - dateEnd
+        - workHours
+        - address
+        - volunteersRequired
+      properties:
+        title:
+          type: string
+          description: Название мероприятия
+        description:
+          type: string
+          description: Описание мероприятия
+        dateStart:
+          type: string
+          format: date-time
+          description: Дата и время начала
+        dateEnd:
+          type: string
+          format: date-time
+          description: Дата и время окончания
+        workHours:
+          type: number
+          format: float
+          description: Количество часов работы для волонтера
+        address:
+          type: string
+          description: Адрес проведения мероприятия
+        volunteersRequired:
+          type: integer
+          minimum: 1
+          description: Требуемое количество волонтеров
+        ageRestriction:
+          type: integer
+          nullable: true
+          description: Возрастное ограничение
+
+    CreateIndividualEventRequest:
+      type: object
+      required:
+        - title
+        - description
+        - dateStart
+        - dateEnd
+        - volunteersRequired
+      properties:
+        title:
+          type: string
+          description: Название заявки
+        description:
+          type: string
+          description: Описание заявки
+        dateStart:
+          type: string
+          format: date-time
+          description: Дата и время начала
+        dateEnd:
+          type: string
+          format: date-time
+          description: Дата и время окончания
+        volunteersRequired:
+          type: integer
+          minimum: 1
+          description: Требуемое количество волонтеров
+        ageRestriction:
+          type: integer
+          nullable: true
+          description: Возрастное ограничение
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Полное имя пользователя
+        description:
+          type: string
+          nullable: true
+          description: Описание "о себе"
+        birthday:
+          type: string
+          format: date
+          nullable: true
+          description: День рождения
+        location:
+          type: string
+          nullable: true
+          description: Место проживания
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор организации
+        name:
+          type: string
+          description: Название организации
+        description:
+          type: string
+          nullable: true
+          description: Описание организации
+        address:
+          type: string
+          nullable: true
+          description: Адрес организации
+
+    OrganizationRoleRequest:
+      type: object
+      required:
+        - requestType
+      properties:
+        requestType:
+          type: string
+          enum: [EXISTING, NEW]
+          description: Тип запроса - для существующей организации или создание новой
+        organizationId:
+          type: integer
+          nullable: true
+          description: ID существующей организации (обязательно если requestType=EXISTING)
+        organizationName:
+          type: string
+          nullable: true
+          description: Название новой организации (обязательно если requestType=NEW)
+        organizationDescription:
+          type: string
+          nullable: true
+          description: Описание новой организации (для requestType=NEW)
+        organizationAddress:
+          type: string
+          nullable: true
+          description: Адрес новой организации (для requestType=NEW)
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор отзыва
+        reviewerId:
+          type: integer
+          description: ID автора отзыва
+        reviewedId:
+          type: integer
+          description: ID пользователя, о котором отзыв
+        eventId:
+          type: integer
+          description: ID заявки
+        rating:
+          type: number
+          format: float
+          description: Оценка от 1 до 5
+        content:
+          type: string
+          description: Текст отзыва
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата создания отзыва
+
+    VolunteerBookEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор записи
+        userId:
+          type: integer
+          description: ID волонтера
+        eventId:
+          type: integer
+          description: ID массового мероприятия
+        content:
+          type: string
+          description: Описание записи/комментарий
+        event:
+          $ref: '#/components/schemas/MassEvent'
+          description: Информация о мероприятии
+        completedAt:
+          type: string
+          format: date-time
+          description: Дата завершения участия
+
+    UpdateUserRoleRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum: [USER, ORG_REPRESENTATIVE]
+          description: Новая роль пользователя
+        organisationId:
+          type: integer
+          nullable: true
+          description: ID организации (обязательно для роли ORG_REPRESENTATIVE, null для USER)
+
+    CreateOrganizationRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Название организации
+        description:
+          type: string
+          nullable: true
+          description: Описание организации
+        address:
+          type: string
+          nullable: true
+          description: Адрес организации
+
+    OrganizationRoleRequestItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID запроса
+        userId:
+          type: integer
+          description: ID пользователя
+        user:
+          $ref: '#/components/schemas/User'
+          description: Информация о пользователе
+        requestType:
+          type: string
+          enum: [EXISTING, NEW]
+          description: Тип запроса
+        organizationId:
+          type: integer
+          nullable: true
+          description: ID существующей организации
+        organizationName:
+          type: string
+          nullable: true
+          description: Название новой организации
+        organizationDescription:
+          type: string
+          nullable: true
+          description: Описание новой организации
+        organizationAddress:
+          type: string
+          nullable: true
+          description: Адрес новой организации
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+          description: Статус запроса
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата создания запроса
+
+paths:
+# Authentication Endpoints
+  /auth/register:
+    post:
+      tags: [auth]
+      description: Регистрация нового пользователя через email и пароль
+      requestBody: 
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags: [auth]
+      description: Вход пользователя через email и пароль
+      requestBody: 
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Пользователь успешно вошел
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /auth/oauth2/{provider}/authorize:
+    get:
+      tags: [auth]
+      summary: OAuth2 авторизация
+      description: Перенаправляет пользователя на страницу провайдера (VK, Yandex)
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [vk, yandex]
+        - name: redirect_uri
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uri
+          description: URL для возврата после авторизации
+      responses:
+        '302':
+          description: Перенаправление на страницу провайдера
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/oauth2/{provider}/callback:
+    get:
+      tags: [auth]
+      summary: OAuth2 callback
+      description: Обрабатывает ответ от провайдера и возвращает токен аутентификации
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [vk, yandex]
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Код авторизации, полученный от провайдера
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Состояние для предотвращения CSRF атак
+      responses:
+        '200':
+          description: Пользователь успешно аутентифицирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Выход пользователя
+      description: Завершает сеанс пользователя, инвалидируя токен
+      responses:
+        '200':
+          description: Пользователь успешно вышел
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # User Profile
+  /users/me:
+    get:
+      tags: [users]
+      summary: Получение информации о текущем пользователе
+      description: Возвращает данные личного кабинета авторизованного пользователя
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Данные пользователя успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [users]
+      summary: Редактирование личных данных
+      description: Авторизованный пользователь редактирует свои личные данные
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Данные успешно обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/avatar:
+    post:
+      tags: [users]
+      summary: Загрузка аватара
+      description: Авторизованный пользователь загружает свой аватар
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Файл изображения (JPEG, PNG)
+      responses:
+        '200':
+          description: Аватар успешно загружен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  avatarUrl:
+                    type: string
+                    description: URL загруженного аватара
+        '400':
+          description: Ошибка валидации файла
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/events:
+    get:
+      tags: [users]
+      summary: Получение списка заявок пользователя
+      description: Возвращает список заявок, созданных авторизованным пользователем (активных и завершившихся)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [active, completed, all]
+            default: all
+          description: Фильтр по статусу заявок
+      responses:
+        '200':
+          description: Список заявок успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  massEvents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MassEvent'
+                  individualEvents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IndividualEvent'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/reviews:
+    get:
+      tags: [users]
+      summary: Получение отзывов о пользователе
+      description: Возвращает список отзывов об участии авторизованного пользователя в индивидуальных заявках
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список отзывов успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Review'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/volunteer-book:
+    get:
+      tags: [users]
+      summary: Получение электронной волонтерской книжки
+      description: |
+        Возвращает электронную волонтерскую книжку авторизованного пользователя.
+        Книжка содержит записи об участии в завершенных массовых волонтерских мероприятиях.
+        Записи автоматически добавляются после завершения мероприятия.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Волонтерская книжка успешно получена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/VolunteerBookEntry'
+                    description: Список записей в книжке
+                  totalHours:
+                    type: number
+                    format: float
+                    description: Общее количество отработанных часов
+                  totalEvents:
+                    type: integer
+                    description: Общее количество завершенных мероприятий
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /users/me/organization-request:
+    post:
+      tags: [users]
+      summary: Подача запроса на получение статуса представителя организации
+      description: Авторизованный пользователь подает запрос на получение статуса ПрОрг, указывая существующую организацию или данные для создания новой
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationRoleRequest'
+      responses:
+        '201':
+          description: Запрос успешно подан
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Пользователь уже является представителем организации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Organizations
+  /organizations:
+    get:
+      tags: [organizations]
+      summary: Получение списка организаций
+      description: Возвращает список всех зарегистрированных организаций в системе (для выбора при подаче запроса на статус ПрОрг)
+      responses:
+        '200':
+          description: Список организаций успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Mass Events
+  /events/mass:
+    get:
+      tags: [requests]
+      summary: Получение списка массовых мероприятий
+      description: Возвращает список всех массовых волонтерских мероприятий с возможностью фильтрации по параметрам
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Поиск по названию мероприятия (частичное совпадение)
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Поиск мероприятий начинающихся с указанной даты
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Поиск мероприятий заканчивающихся до указанной даты
+        - name: address
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Поиск по адресу проведения (частичное совпадение)
+        - name: organisationId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Поиск по ID организации-организатора
+      responses:
+        '200':
+          description: Список массовых мероприятий успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MassEvent'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [requests]
+      summary: Создание массового мероприятия
+      description: Представитель организации создает новое массовое волонтерское мероприятие от имени своей организации
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMassEventRequest'
+      responses:
+        '201':
+          description: Мероприятие успешно создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MassEvent'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ORG_REPRESENTATIVE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Individual Events
+  /events/individual:
+    get:
+      tags: [requests]
+      summary: Получение списка индивидуальных заявок
+      description: Возвращает список всех индивидуальных заявок с возможностью фильтрации по параметрам
+      parameters:
+        - name: title
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Поиск по названию заявки (частичное совпадение)
+        - name: dateFrom
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Поиск заявок начинающихся с указанной даты
+        - name: dateTo
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Поиск заявок заканчивающихся до указанной даты
+        - name: organisationId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Поиск по ID организации (если заявка от организации)
+      responses:
+        '200':
+          description: Список индивидуальных заявок успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IndividualEvent'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [requests]
+      summary: Создание индивидуальной заявки
+      description: Авторизованный пользователь создает новую индивидуальную волонтерскую заявку
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIndividualEventRequest'
+      responses:
+        '201':
+          description: Заявка успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndividualEvent'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/mass/{id}:
+    get:
+      tags: [requests]
+      summary: Получение деталей массового мероприятия
+      description: Возвращает детальную информацию о массовом мероприятии по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      responses:
+        '200':
+          description: Детали мероприятия успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MassEvent'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [admin]
+      summary: Удаление массового мероприятия
+      description: Администратор удаляет массовое мероприятие в целях модерации
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      responses:
+        '204':
+          description: Мероприятие успешно удалено
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [requests]
+      summary: Редактирование массового мероприятия
+      description: Представитель организации редактирует массовое мероприятие своей организации
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMassEventRequest'
+      responses:
+        '200':
+          description: Мероприятие успешно обновлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MassEvent'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ORG_REPRESENTATIVE и принадлежность к организации)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{id}:
+    get:
+      tags: [requests]
+      summary: Получение деталей индивидуальной заявки
+      description: Возвращает детальную информацию об индивидуальной заявке по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      responses:
+        '200':
+          description: Детали заявки успешно получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndividualEvent'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [admin]
+      summary: Удаление индивидуальной заявки
+      description: Администратор удаляет индивидуальную заявку в целях модерации
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      responses:
+        '204':
+          description: Заявка успешно удалена
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags: [requests]
+      summary: Редактирование индивидуальной заявки
+      description: Автор заявки редактирует свою индивидуальную заявку
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIndividualEventRequest'
+      responses:
+        '200':
+          description: Заявка успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndividualEvent'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (пользователь не является автором заявки)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/mass/{id}/participate:
+    post:
+      tags: [participation]
+      summary: Подать заявку на участие в массовом мероприятии
+      description: Авторизованный пользователь подает заявку на участие в массовом волонтерском мероприятии
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      responses:
+        '201':
+          description: Заявка на участие успешно подана
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{id}/participate:
+    post:
+      tags: [participation]
+      summary: Подать заявку на участие в индивидуальной заявке
+      description: Авторизованный пользователь подает заявку на участие в индивидуальной волонтерской заявке
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      responses:
+        '201':
+          description: Заявка на участие успешно подана
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/mass/{id}/parameters:
+    get:
+      tags: [requests]
+      summary: Получение параметров массового мероприятия
+      description: Возвращает дополнительные параметры массового мероприятия по ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      responses:
+        '200':
+          description: Параметры мероприятия успешно получены
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{id}/parameters:
+    get:
+      tags: [requests]
+      summary: Получение параметров индивидуальной заявки
+      description: Возвращает дополнительные параметры индивидуальной заявки по ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      responses:
+        '200':
+          description: Параметры заявки успешно получены
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Participants Management
+  /events/mass/{id}/participants:
+    get:
+      tags: [participation]
+      summary: Получение списка участников массового мероприятия
+      description: Автор мероприятия или представители организации получают список участников
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      responses:
+        '200':
+          description: Список участников успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  participants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  totalCount:
+                    type: integer
+                    description: Общее количество участников
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (пользователь не является автором/представителем организации)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{id}/participants:
+    get:
+      tags: [participation]
+      summary: Получение списка участников индивидуальной заявки
+      description: Автор заявки получает список участников
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      responses:
+        '200':
+          description: Список участников успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  participants:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  totalCount:
+                    type: integer
+                    description: Общее количество участников
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (пользователь не является автором)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/mass/{id}/requests:
+    get:
+      tags: [participation]
+      summary: Получение списка запросов на участие в массовом мероприятии
+      description: Представители организации получают список запросов на участие для принятия/отклонения
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+      responses:
+        '200':
+          description: Список запросов успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    requestId:
+                      type: integer
+                    user:
+                      $ref: '#/components/schemas/User'
+                    applicationDate:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                      enum: [PENDING, ACCEPTED, REJECTED]
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{id}/requests:
+    get:
+      tags: [participation]
+      summary: Получение списка запросов на участие в индивидуальной заявке
+      description: Автор заявки получает список запросов на участие для принятия/отклонения
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+      responses:
+        '200':
+          description: Список запросов успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    requestId:
+                      type: integer
+                    user:
+                      $ref: '#/components/schemas/User'
+                    applicationDate:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                      enum: [PENDING, ACCEPTED, REJECTED]
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/mass/{eventId}/requests/{requestId}/accept:
+    post:
+      tags: [participation]
+      summary: Принятие запроса на участие в массовом мероприятии
+      description: Представитель организации принимает запрос волонтера на участие
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор запроса
+      responses:
+        '200':
+          description: Запрос успешно принят
+        '400':
+          description: Ошибка (например, достигнут лимит участников)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие или запрос не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/mass/{eventId}/requests/{requestId}/reject:
+    post:
+      tags: [participation]
+      summary: Отклонение запроса на участие в массовом мероприятии
+      description: Представитель организации отклоняет запрос волонтера на участие
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор мероприятия
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор запроса
+      responses:
+        '200':
+          description: Запрос успешно отклонен
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Мероприятие или запрос не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{eventId}/requests/{requestId}/accept:
+    post:
+      tags: [participation]
+      summary: Принятие запроса на участие в индивидуальной заявке
+      description: Автор заявки принимает запрос волонтера на участие
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор запроса
+      responses:
+        '200':
+          description: Запрос успешно принят
+        '400':
+          description: Ошибка (например, достигнут лимит участников)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка или запрос не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events/individual/{eventId}/requests/{requestId}/reject:
+    post:
+      tags: [participation]
+      summary: Отклонение запроса на участие в индивидуальной заявке
+      description: Автор заявки отклоняет запрос волонтера на участие
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор запроса
+      responses:
+        '200':
+          description: Запрос успешно отклонен
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка или запрос не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Reviews
+  /events/individual/{eventId}/participants/{userId}/review:
+    post:
+      tags: [participation]
+      summary: Оставление отзыва об участнике индивидуальной заявки
+      description: Автор индивидуальной заявки оставляет отзыв о волонтере после выполнения работы
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор заявки
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Уникальный идентификатор волонтера
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+                - content
+              properties:
+                rating:
+                  type: number
+                  format: float
+                  minimum: 1
+                  maximum: 5
+                  description: Оценка от 1 до 5
+                content:
+                  type: string
+                  description: Текст отзыва
+      responses:
+        '201':
+          description: Отзыв успешно добавлен
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (пользователь не автор заявки или заявка не завершена)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Заявка или пользователь не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Leaderboard
+  /leaderboard:
+    get:
+      tags: [leaderboard]
+      summary: Получение списка лидеров
+      description: |
+        Возвращает список лидеров волонтерской активности.
+        Если пользователь авторизован, дополнительно возвращается его позиция в рейтинге.
+        Доступен как для авторизованных, так и для неавторизованных пользователей.
+      security:
+        - bearerAuth: []
+        - {}
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            minimum: 1
+            maximum: 500
+          description: Количество записей в списке лидеров
+      responses:
+        '200':
+          description: Список лидеров успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderboardResponse'
+              examples:
+                unauthorized:
+                  summary: Ответ для неавторизованного пользователя
+                  value:
+                    leaderboard:
+                      - rank: 1
+                        userId: 123
+                        fullName: "Иванов Иван"
+                        score: 150
+                      - rank: 2
+                        userId: 456
+                        fullName: "Петров Петр"
+                        score: 140
+                    currentUserRank: null
+                authorized:
+                  summary: Ответ для авторизованного пользователя
+                  value:
+                    leaderboard:
+                      - rank: 1
+                        userId: 123
+                        fullName: "Иванов Иван"
+                        score: 150
+                      - rank: 2
+                        userId: 456
+                        fullName: "Петров Петр"
+                        score: 140
+                    currentUserRank:
+                      rank: 45
+                      score: 25
+        '400':
+          description: Ошибка валидации параметров
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Admin Endpoints
+  /admin/users/{userId}/role:
+    put:
+      tags: [admin]
+      summary: Изменение роли пользователя
+      description: Администратор изменяет роль учетной записи АП на ПрОрг и наоборот, а также указывает организацию для ПрОрг
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRoleRequest'
+      responses:
+        '200':
+          description: Роль пользователя успешно изменена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Пользователь не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/organizations:
+    get:
+      tags: [admin]
+      summary: Получение списка всех организаций (для администратора)
+      description: Администратор получает расширенный список всех организаций с полной информацией
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список организаций успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags: [admin]
+      summary: Создание новой организации
+      description: Администратор добавляет новую организацию в систему
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '201':
+          description: Организация успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/organizations/{id}:
+    put:
+      tags: [admin]
+      summary: Редактирование организации
+      description: Администратор изменяет информацию об организации (название, описание, адрес)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID организации
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '200':
+          description: Организация успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          description: Ошибка валидации данных
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Организация не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags: [admin]
+      summary: Удаление организации
+      description: Администратор удаляет организацию из системы
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID организации
+      responses:
+        '204':
+          description: Организация успешно удалена
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Организация не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/organization-requests:
+    get:
+      tags: [admin]
+      summary: Получение списка запросов на статус ПрОрг
+      description: Администратор получает список всех запросов на получение статуса представителя организации для их рассмотрения
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, ALL]
+            default: PENDING
+          description: Фильтр по статусу запросов
+      responses:
+        '200':
+          description: Список запросов успешно получен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrganizationRoleRequestItem'
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/organization-requests/{requestId}/approve:
+    post:
+      tags: [admin]
+      summary: Одобрение запроса на статус ПрОрг
+      description: Администратор одобряет запрос пользователя на получение статуса представителя организации
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID запроса
+      responses:
+        '200':
+          description: Запрос успешно одобрен, пользователь получил статус ПрОрг
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Запрос не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/organization-requests/{requestId}/reject:
+    post:
+      tags: [admin]
+      summary: Отклонение запроса на статус ПрОрг
+      description: Администратор отклоняет запрос пользователя на получение статуса представителя организации
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: ID запроса
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Причина отклонения запроса
+      responses:
+        '200':
+          description: Запрос успешно отклонен
+        '401':
+          description: Неавторизованный доступ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Доступ запрещен (требуется роль ADMIN)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Запрос не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

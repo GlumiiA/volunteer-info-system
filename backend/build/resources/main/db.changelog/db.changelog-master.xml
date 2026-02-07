@@ -1,0 +1,20 @@
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <include file="changeset/001-create-organisations-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/002-create-users-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/003-create-individual-events-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/004-create-mass-events-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/005-create-reviews-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/006-create-volunteer-book-entries-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/007-create-participations-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/008-create-organization-role-requests-table.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/009-add-creator-user-id-to-individual-events.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/010-add-avatar-url-to-users.xml" relativeToChangelogFile="true"/>
+    <include file="changeset/011-alter-avatar-url-to-text.xml" relativeToChangelogFile="true"/>
+    <!-- Admin user is created via setup_admin.ps1 script, not via Liquibase -->
+
+</databaseChangeLog>

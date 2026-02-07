@@ -1,0 +1,16 @@
+generatorName: spring
+inputSpec: doc/part-3/openapi/openapi.yaml
+outputDir: ./backend
+additionalProperties:
+  useSpringBoot3: true
+  dateLibrary: java8
+  useTags: true
+  interfaceOnly: false
+  documentationProvider: springdoc
+  performBeanValidation: true
+  useBeanValidation: true
+  apiPackage: com.volunteer.controller
+  modelPackage: com.volunteer.dto
+  basePackage: com.volunteer
+  configPackage: com.volunteer.config
+  sourceFolder: src/main/java
